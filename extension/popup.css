@@ -1,0 +1,53 @@
+/* Compact toolbar panel; the full options page keeps its own layout. */
+:root{font-size:13px;line-height:1.35}
+html{width:390px;max-width:390px}
+body{width:390px;margin:0;overflow-x:hidden}
+main{width:390px;margin:0;padding:15px 15px 13px}
+.masthead{align-items:center;gap:8px}
+.brand{gap:9px;min-width:0}
+.brand>img{width:32px;height:32px;border-radius:9px}
+.brand h1{font-size:17px;white-space:nowrap}
+.eyebrow{font-size:9px;letter-spacing:.12em}
+.language{gap:1px;padding:3px;border-radius:8px}
+.language button{font-size:10px;padding:5px 9px}
+.workspace{margin-top:15px}
+.section-title{margin-bottom:8px;align-items:center}
+.section-title h2{font-size:13px;margin:0}
+.counter{font-size:10px;padding:2px 8px}
+.tabbar{gap:5px;align-items:stretch}
+#tabs{flex:1;gap:5px;padding:3px 2px 0;scrollbar-width:thin}
+.profile-tab{padding:6px 8px;max-width:135px;min-width:76px;gap:3px;
+  display:flex;flex-direction:column;align-items:flex-start;font-size:11px}
+.profile-tab span{max-width:115px}
+.profile-tab kbd{font-size:9px;padding:2px 5px}
+.plus{flex:none;align-self:center;font-size:20px;padding:6px 10px;margin:0;border-radius:8px}
+.editor{min-height:0;padding:15px;border-radius:0 12px 12px 12px}
+.editor-title{margin-bottom:12px;align-items:center;gap:8px}
+.editor h3{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:205px}
+.remove{font-size:11px;white-space:nowrap;padding:5px 0}
+.form-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px 10px}
+.field>span,.field>legend{font-size:11px;margin-bottom:5px}
+.field input:not([type=radio]),.field select{font-size:12px;padding:7px 8px;border-radius:7px}
+.field small{font-size:10px}
+fieldset.field{min-width:0}
+.mode-grid{grid-template-columns:1fr 1fr;gap:8px}
+.mode{padding:8px;gap:7px;border-radius:8px;align-items:center;min-height:36px}
+.mode input{flex:none;margin:0}
+.mode b{font-size:11px}
+.shortcut-group{padding-top:10px;margin-top:-3px}
+.shortcut-row{gap:12px;justify-content:flex-start}
+.key-button{min-width:0;min-height:35px;padding:6px 10px;gap:15px}
+.key-button kbd{font-size:11px;padding:3px 7px}
+.key-button span{font-size:11px}
+.shortcut-group>small{margin-top:6px}
+#status{min-height:0;margin:8px 0 0;font-size:11px}
+#status:empty{display:none}
+.privacy-note{margin-top:9px;font-size:10px;line-height:1.4}
+footer{margin-top:10px;padding-top:10px;align-items:center;flex-wrap:nowrap;gap:8px}
+footer a{color:var(--accent-hover);font-size:11px;white-space:nowrap}
+.full-settings{background:var(--accent);border:0;border-radius:8px;color:#161126;
+  font-size:11px;font-weight:700;padding:9px 12px}
+.full-settings:hover{filter:brightness(1.1)}
+/* Keep the two-column editor even under the full page's mobile breakpoint. */
+@media(max-width:680px){.form-grid,.mode-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .masthead{align-items:center}.editor{padding:15px}.section-title{align-items:center}}

@@ -2,10 +2,11 @@
 
 Search selected webpage text with a hotkey. Results open in a new active or background tab, without the context menu.
 
-**Languages:** English and Russian, switchable in Settings. **Firefox:** desktop 140 or newer.
+**Languages:** English and Russian, switchable in both settings views. **Firefox:** desktop 140 or newer.
 
 ## Features
 
+- **Compact toolbar popup:** click the extension icon to add/edit tabs, engines, shortcuts and foreground/background mode. Use **Full settings** to open the original spacious settings page; neither view replaces the other. Changes use the same local profiles.
 - **F1** defaults to searching Google in a new active tab.
 - **+** adds a profile tab with its own shortcut, search provider, and tab mode (up to 16 independent profiles).
 - Search providers: Google, DuckDuckGo, Yandex, Bing, or a user-defined HTTPS URL with `{query}` placeholder.
@@ -26,16 +27,16 @@ Firefox 140+ is required for Mozilla's built-in data transmission consent. The m
 1. Download or clone the repository.
 2. Open `about:debugging#/runtime/this-firefox` in Firefox 140+.
 3. Click **Load Temporary Add-on** and choose `extension/manifest.json`.
-4. Select webpage text and press `F1`; click the add-on icon to edit profiles.
+4. Select webpage text and press `F1`; click the add-on icon for the compact popup. Choose **Full settings** for the existing full-page editor.
 
-Temporary add-ons disappear when Firefox restarts. To publish permanently, submit the built extension ZIP to Mozilla Add-ons for signing and review. Existing saved profiles and shortcuts are retained when upgrading the extension under the same ID: `firefoxfastsearch@devinsondev`. Version 1.2 deletes any icon override previously saved by version 1.1. Firefox 139 and older are no longer supported.
+Temporary add-ons disappear when Firefox restarts. To publish permanently, submit the built extension ZIP to Mozilla Add-ons for signing and review. Existing saved profiles and shortcuts are retained when upgrading the extension under the same ID: `firefoxfastsearch@devinsondev`. Version 1.2+ deletes any icon override previously saved by version 1.1. Firefox 139 and older are no longer supported.
 
 ## Package without npm
 
 Run this in **PowerShell**, at the repository root:
 
 ```powershell
-Compress-Archive -Path .\extension\* -DestinationPath .\firefoxfastsearch-1.2.0.zip -Force
+Compress-Archive -Path .\extension\* -DestinationPath .\firefoxfastsearch-1.3.0.zip -Force
 ```
 
 The ZIP must contain `manifest.json` at the archive root. You can alternatively run `python scripts/package.py` for a deterministic, extension-only ZIP in `dist/`. Neither npm nor Python is required **to use** the add-on.

@@ -122,6 +122,7 @@ $("profileName").addEventListener("input", event => {
   profile.name = event.target.value.slice(0, 40);
   renderTabs();
   $("profileHeading").textContent = labelOf(profile);
+  void saveProfiles(); // Save while typing; popups can close without a blur event.
 });
 $("profileName").addEventListener("change", () => void saveProfiles());
 $("engine").addEventListener("change", event => {
@@ -130,6 +131,15 @@ $("engine").addEventListener("change", event => {
   profile.engine = event.target.value;
   render();
   void saveProfiles();
+});
+$("customTemplate").addEventListener("input", event => {
+  const profile = activeProfile();
+  if (!profile) return;
+  try {
+    buildSearchUrl({ ...profile, template: event.target.value }, "test");
+    profile.template = event.target.value;
+    void saveProfiles(); // Persist valid templates even if the popup closes next.
+  } catch { /* Keep the last valid template until the input is complete. */ }
 });
 $("customTemplate").addEventListener("change", event => {
   const profile = activeProfile();
@@ -193,8 +203,26 @@ $("tabs").addEventListener("keydown", event => {
   render();
   $(`tab-${selectedId}`).focus();
 });
-$("browserShortcuts").addEventListener("click", () =>
+$("browserShortcuts")?.addEventListener("click", () =>
   void browser.commands.openShortcutSettings().catch(error => notify(String(error), true)));
+$("fullSettings")?.addEventListener("click", () =>
+  void browser.runtime.openOptionsPage().catch(error => notify(String(error), true)));
+// Reflect popup edits in an already-open full settings tab (and vice versa).
+// A focused editor owns its draft; avoid replacing text while the user types.
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return;
+  if (changes.uiLanguage && ["ru", "en"].includes(changes.uiLanguage.newValue)) {
+    language = changes.uiLanguage.newValue;
+    render();
+  }
+  if (changes.profiles && !document.hasFocus()) {
+    const incoming = normalizeProfiles(changes.profiles.newValue);
+    if (!incoming) return;
+    profiles = incoming;
+    if (!activeProfile()) selectedId = profiles[0]?.id ?? null;
+    render();
+  }
+});
 browser.commands.onChanged.addListener(() => void loadCommands().then(render));
 window.addEventListener("focus", () => { if (!recordingId) void loadCommands().then(render); });
 

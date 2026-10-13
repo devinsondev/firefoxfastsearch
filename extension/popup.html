@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fast Search — Quick Settings</title>
+  <link rel="stylesheet" href="options.css">
+  <link rel="stylesheet" href="popup.css">
+  <script type="module" src="options.js"></script>
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <div class="brand">
+        <img src="icons/icon.png" alt="" width="32" height="32">
+        <div><p class="eyebrow">FIREFOX</p><h1>Fast Search</h1></div>
+      </div>
+      <div class="language" role="group" aria-label="Language / Язык">
+        <button type="button" data-lang="ru" aria-pressed="true">RU</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </header>
+
+    <section class="workspace" aria-labelledby="profilesHeading">
+      <div class="section-title">
+        <h2 id="profilesHeading" data-i18n="profiles">Профили поиска</h2>
+        <span id="counter" class="counter"></span>
+      </div>
+      <div class="tabbar">
+        <div id="tabs" role="tablist" aria-label="Search profiles"></div>
+        <button id="addProfile" class="plus" type="button" data-i18n-title="addProfileTitle" aria-label="Добавить профиль">+</button>
+      </div>
+      <div class="editor" id="editor" role="tabpanel" aria-label="Profile settings">
+        <div id="emptyState" hidden>
+          <h3 data-i18n="emptyTitle">Пока нет профилей</h3>
+          <p data-i18n="emptyHelp">Нажми +, чтобы создать первый.</p>
+        </div>
+        <div id="profileControls">
+          <div class="editor-title">
+            <h3 id="profileHeading"></h3>
+            <button type="button" class="remove" id="removeProfile" data-i18n="deleteProfile">Удалить профиль</button>
+          </div>
+          <div class="form-grid">
+            <label class="field"><span data-i18n="displayName">Название (необязательно)</span>
+              <input id="profileName" maxlength="40" autocomplete="off" data-i18n-placeholder="namePlaceholder" placeholder="Например, перевод"></label>
+            <label class="field"><span data-i18n="searchEngine">Поисковик</span>
+              <select id="engine">
+                <option value="google">Google</option><option value="duckduckgo">DuckDuckGo</option>
+                <option value="yandex">Yandex</option><option value="bing">Bing</option>
+                <option value="custom" data-i18n="customEngine">Свой URL...</option>
+              </select></label>
+            <label class="field full" id="templateRow" hidden>
+              <span data-i18n="customUrl">Адрес поиска с {query}</span>
+              <input id="customTemplate" type="url" spellcheck="false" autocomplete="off" placeholder="https://example.com/search?q={query}">
+              <small data-i18n="urlHelp">HTTPS и {query} вместо запроса.</small>
+            </label>
+            <fieldset class="field full"><legend data-i18n="openMode">Открывать результаты</legend>
+              <div class="mode-grid">
+                <label class="mode"><input type="radio" name="target" value="foreground"><span>
+                  <b data-i18n="popupForeground">С переходом</b>
+                </span></label>
+                <label class="mode"><input type="radio" name="target" value="background"><span>
+                  <b data-i18n="popupBackground">В фоне</b>
+                </span></label>
+              </div>
+            </fieldset>
+            <div class="field full shortcut-group"><span data-i18n="hotkey">Горячая клавиша</span>
+              <div class="shortcut-row">
+                <button type="button" id="recordShortcut" class="key-button">
+                  <kbd id="shortcutLabel">F1</kbd><span data-i18n="change">Изменить</span>
+                </button>
+                <button type="button" id="clearShortcut" class="quiet" data-i18n="clear">Убрать</button>
+              </div>
+              <small data-i18n="hotkeyHelp">Нажми «Изменить», затем комбинацию. Esc — отмена.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="status" role="status" aria-live="polite"></div>
+    <p class="privacy-note" data-i18n="popupDisclosure">Выделенный текст отправляется выбранному поисковику.</p>
+    <footer>
+      <button id="fullSettings" class="full-settings" type="button" data-i18n="openFullSettings">Полные настройки ↗</button>
+      <a href="legal.html" data-i18n="popupLegal">Privacy &amp; Legal ↗</a>
+    </footer>
+  </main>
+</body>
+</html>

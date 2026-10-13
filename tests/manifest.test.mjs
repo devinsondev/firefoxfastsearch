@@ -48,3 +48,38 @@ test("legal and privacy notices ship inside the extension in both languages", ()
   assert.match(html, /AS IS/);
   assert.match(html, /максимальн/);
 });
+
+test("toolbar popup coexists with the original full settings tab", () => {
+  assert.equal(manifest.action.default_popup, "popup.html");
+  assert.equal(manifest.options_ui.page, "options.html");
+  const background = readFileSync(new URL("background.js", extension), "utf8");
+  assert.doesNotMatch(background, /action\.onClicked/);
+});
+test("popup reuses the full-page profile controller", () => {
+  const popup = readFileSync(new URL("popup.html", extension), "utf8");
+  const settings = readFileSync(new URL("options.html", extension), "utf8");
+  for (const id of ["tabs", "addProfile", "counter", "emptyState", "profileControls", "editor",
+    "profileHeading", "profileName", "engine", "templateRow", "customTemplate", "shortcutLabel",
+    "clearShortcut", "recordShortcut", "removeProfile", "status"]) {
+    for (const [name, html] of [["popup", popup], ["settings", settings]]) {
+      assert.match(html, new RegExp(`id="${id}"`), `${name} missing ${id}`);
+    }
+  }
+  assert.match(popup, /src="options\.js"/);
+  assert.match(popup, /href="popup\.css"/);
+  assert.match(popup, /id="fullSettings"/);
+  assert.match(popup, /href="legal\.html"/);
+  assert.doesNotMatch(popup, /(?:src|href)="https?:\/\//);
+});
+test("popup labels are localized in both languages", () => {
+  const popup = readFileSync(new URL("popup.html", extension), "utf8");
+  const matches = [...popup.matchAll(/data-i18n(?:-placeholder|-title)?="(\w+)"/g)];
+  for (const [, key] of matches) assert.ok(STRINGS.ru[key] && STRINGS.en[key], key);
+  assert.match(popup, /data-lang="ru"/);
+  assert.match(popup, /data-lang="en"/);
+});
+test("popup does not allow users to upload custom icons", () => {
+  const popup = readFileSync(new URL("popup.html", extension), "utf8");
+  assert.doesNotMatch(popup, /type="file"|iconDrop|iconFile|resetIcon/);
+  assert.equal(manifest.action.default_icon, "icons/icon.png");
+});

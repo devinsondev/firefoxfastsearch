@@ -5,8 +5,6 @@ browser.commands.onCommand.addListener((command, tab) => {
     console.warn("Fast Search: search failed", error));
 });
 
-browser.action.onClicked.addListener(() => void browser.runtime.openOptionsPage());
-
 // Remove any icon uploaded in older versions. Only the bundled icon is supported.
 void (async () => {
   try {

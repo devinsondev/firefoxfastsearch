@@ -30,6 +30,9 @@ export const STRINGS = {
     reserved: "Если сочетание занято Firefox, оно может не сработать.",
     invalidTemplate: "Для своего поисковика нужен HTTPS URL c {query}.",
     confirmDelete: "Удалить этот профиль и его клавишу?",
+    popupForeground: "С переходом", popupBackground: "В фоне",
+    popupDisclosure: "Выделенный текст отправляется выбранному поисковику. Не используй для секретов.",
+    openFullSettings: "Полные настройки ↗", popupLegal: "Правовая информация ↗",
   },
   en: {
     headline: "Select. Press. Search.",
@@ -62,6 +65,9 @@ export const STRINGS = {
     reserved: "Shortcuts reserved by Firefox may not work.",
     invalidTemplate: "Custom search requires an HTTPS URL with {query}.",
     confirmDelete: "Delete this profile and its shortcut?",
+    popupForeground: "Switch to tab", popupBackground: "Background",
+    popupDisclosure: "Selected text is sent to your search provider. Avoid secrets.",
+    openFullSettings: "Full settings ↗", popupLegal: "Privacy & Legal ↗",
   },
 };
 export function translate(language, key) {
