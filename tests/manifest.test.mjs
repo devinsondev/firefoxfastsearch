@@ -22,3 +22,29 @@ test("icons are referenced by the manifest", () => {
   assert.equal(manifest.action.default_icon, "icons/icon.png");
   assert.equal(manifest.icons["128"], "icons/icon.png");
 });
+
+test("data transmission is disclosed with built-in Firefox consent", () => {
+  const gecko = manifest.browser_specific_settings.gecko;
+  assert.ok(parseInt(gecko.strict_min_version, 10) >= 140);
+  assert.deepEqual(gecko.data_collection_permissions.required.sort(),
+    ["searchTerms", "websiteContent"].sort());
+});
+test("runtime image uploads are removed, while bundled icon remains", () => {
+  const html = readFileSync(new URL("options.html", extension), "utf8");
+  const options = readFileSync(new URL("options.js", extension), "utf8");
+  const background = readFileSync(new URL("background.js", extension), "utf8");
+  assert.doesNotMatch(html, /type="file"|iconDrop|iconFile|resetIcon/);
+  assert.doesNotMatch(options, /setupIconPicker|icon-picker/);
+  assert.doesNotMatch(background, /applyToolbarIcon|storage\.onChanged/);
+  assert.match(background, /remove\("toolbarIcon"\)/);
+  assert.match(background, /setIcon\(\{ path: "icons\/icon\.png" \}\)/);
+});
+test("legal and privacy notices ship inside the extension in both languages", () => {
+  const html = readFileSync(new URL("legal.html", extension), "utf8");
+  const settings = readFileSync(new URL("options.html", extension), "utf8");
+  assert.match(settings, /href="legal\.html"/);
+  assert.match(html, /data-legal-copy="ru"/);
+  assert.match(html, /data-legal-copy="en"/);
+  assert.match(html, /AS IS/);
+  assert.match(html, /максимальн/);
+});

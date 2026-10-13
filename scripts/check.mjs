@@ -22,7 +22,7 @@ function walk(directory) {
 }
 walk(root);
 const manifest = JSON.parse(readFileSync(join(extension, "manifest.json"), "utf8"));
-assert.equal(manifest.version, "1.1.0");
+assert.equal(manifest.version, JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version);
 assert.equal(Object.keys(manifest.commands).length, 16);
 assert.equal(manifest.commands["search-foreground"].suggested_key.default, "F1");
 assert.deepEqual(manifest.permissions.slice().sort(), ["activeTab", "scripting", "storage"].sort());

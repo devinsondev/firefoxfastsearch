@@ -1,5 +1,4 @@
 import { searchByCommand } from "./core/search.js";
-import { applyToolbarIcon } from "./core/icon.js";
 
 browser.commands.onCommand.addListener((command, tab) => {
   void searchByCommand(browser, command, tab).catch(error =>
@@ -8,11 +7,12 @@ browser.commands.onCommand.addListener((command, tab) => {
 
 browser.action.onClicked.addListener(() => void browser.runtime.openOptionsPage());
 
-browser.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.toolbarIcon) {
-    void applyToolbarIcon(browser, changes.toolbarIcon.newValue).catch(console.warn);
+// Remove any icon uploaded in older versions. Only the bundled icon is supported.
+void (async () => {
+  try {
+    await browser.storage.local.remove("toolbarIcon");
+    await browser.action.setIcon({ path: "icons/icon.png" });
+  } catch (error) {
+    console.warn("Fast Search: could not reset the legacy toolbar icon", error);
   }
-});
-
-void browser.storage.local.get("toolbarIcon").then(settings =>
-  settings.toolbarIcon && applyToolbarIcon(browser, settings.toolbarIcon)).catch(console.warn);
+})();

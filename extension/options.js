@@ -1,7 +1,6 @@
 import { buildSearchUrl, defaultProfile, firstFreeSlot, initialProfiles, normalizeProfiles, SEARCH_ENGINES, SLOT_IDS } from "./core/profiles.js";
 import { applyLanguage, translate } from "./ui/i18n.js";
 import { assignShortcut, shortcutFromEvent } from "./ui/shortcuts.js";
-import { setupIconPicker } from "./ui/icon-picker.js";
 
 const $ = id => document.getElementById(id);
 const isMac = /Mac/i.test(navigator.platform);
@@ -198,7 +197,6 @@ $("browserShortcuts").addEventListener("click", () =>
   void browser.commands.openShortcutSettings().catch(error => notify(String(error), true)));
 browser.commands.onChanged.addListener(() => void loadCommands().then(render));
 window.addEventListener("focus", () => { if (!recordingId) void loadCommands().then(render); });
-setupIconPicker(browser, notify);
 
 void (async () => {
   const settings = await browser.storage.local.get(["profiles", "searchEngine", "uiLanguage"]);

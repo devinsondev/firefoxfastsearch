@@ -1,60 +1,62 @@
-# Firefox Fast Search
+# Fast Search for Firefox
 
-Firefox add-on: select text, press a keyboard shortcut, search in a new tab. No context menu needed.
+Search selected webpage text with a hotkey. Results open in a new active or background tab, without the context menu.
 
-**Languages:** Russian and English; switch RU / EN in Settings, without restarting.
+**Languages:** English and Russian, switchable in Settings. **Firefox:** desktop 140 or newer.
 
 ## Features
 
-- **F1** initially searches with Google and switches to the new results tab.
-- Click **+** in Settings to add search profiles. One tab = one search engine, shortcut and tab mode.
-- Assign **up to 16** independent shortcuts (Firefox must predeclare its extension commands).
-- Google, DuckDuckGo, Yandex, Bing, or custom HTTPS URL with `{query}` placeholder.
-- Results can open in the foreground or background for **every** profile.
-- Native Firefox shortcut editor remains available; conflicting/reserved keys may not work.
-- No telemetry or third-party background requests. Search text goes to the selected provider on demand.
-- Images can be dropped onto Settings to change the toolbar icon instantly, or replaced in the extension folder.
+- **F1** defaults to searching Google in a new active tab.
+- **+** adds a profile tab with its own shortcut, search provider, and tab mode (up to 16 independent profiles).
+- Search providers: Google, DuckDuckGo, Yandex, Bing, or a user-defined HTTPS URL with `{query}` placeholder.
+- **Fixed official icon:** user-uploaded toolbar icons are not supported. This reduces the ability to misrepresent the official add-on with offensive or misleading imagery.
+- Keyboard shortcuts are subject to Firefox / OS restrictions; some combinations are reserved.
+- No advertising analytics, no developer-controlled search server, and no background tracking.
 
-## Install (temporary / unsigned)
+## Data transmission — read before use
 
-1. Download this repository, or run `npm run build` (Python 3 required), which writes `dist/firefoxfastsearch-1.1.0.zip`.
-2. Open `about:debugging#/runtime/this-firefox` in Firefox 135+.
-3. Choose **Load Temporary Add-on** and select `extension/manifest.json` from the unpacked repository.
-4. Select text on an ordinary web page → press `F1`; click the extension icon to edit profiles.
+Pressing a search shortcut reads the selected text and navigates to the chosen search provider. **That text is sent to the search provider** as part of a URL; it can appear in Firefox history and the provider's logs. Do not search passwords, access tokens, or other secrets. Custom search URLs are controlled by the user.
 
-Temporary add-ons must be reloaded after a Firefox restart. For permanent installs, sign the built package through Mozilla Add-ons; plain unsigned ZIPs are **not** installable permanently in release Firefox.
+The extension keeps search profiles and language settings locally. Firefox manages shortcut assignments. It does not send collected queries to developer-operated servers. See [PRIVACY.md](PRIVACY.md) and [DISCLAIMER.md](DISCLAIMER.md) (English and Russian) and the built-in **Privacy & Legal** page in Settings. The project is independent of Mozilla and search providers.
 
-### Update from 1.0
+Firefox 140+ is required for Mozilla's built-in data transmission consent. The manifest declares required `searchTerms` and `websiteContent` because selected webpage text is sent to the chosen search provider as a search query. This declaration is **not** a claim that the developer collects queries on their own servers.
 
-Keep the **same extension ID** (`firefoxfastsearch@devinsondev`) and update normally: existing Firefox commands `search-foreground` and `search-background` are still present, so their personalized shortcuts remain available. The previous `searchEngine` setting is migrated into the new profile configuration; an existing background shortcut becomes a second profile. **Avoid uninstalling first** if you need saved settings and shortcuts.
+## Install for testing (temporary / unsigned)
 
-## Hotkeys
+1. Download or clone the repository.
+2. Open `about:debugging#/runtime/this-firefox` in Firefox 140+.
+3. Click **Load Temporary Add-on** and choose `extension/manifest.json`.
+4. Select webpage text and press `F1`; click the add-on icon to edit profiles.
 
-Open Settings, select a profile tab, then click **Change** and press the new combination. `Esc` cancels; **Clear** unbinds. Function keys `F1–F19` and supported Ctrl/Alt/Command combinations can be used subject to Firefox's keyboard shortcut rules. `Ctrl+Tab`, `Ctrl+P`, OS-reserved keys and other browser shortcuts cannot be stolen reliably.
+Temporary add-ons disappear when Firefox restarts. To publish permanently, submit the built extension ZIP to Mozilla Add-ons for signing and review. Existing saved profiles and shortcuts are retained when upgrading the extension under the same ID: `firefoxfastsearch@devinsondev`. Version 1.2 deletes any icon override previously saved by version 1.1. Firefox 139 and older are no longer supported.
 
-New profile tabs start without a shortcut: bind one before expecting the profile to run. The editor supports one active command per profile; to create the eight possible combinations of four built-in search engines × two tab modes, add eight profiles.
+## Package without npm
 
-For a custom engine choose **Custom URL...**, and give a URL such as `https://example.com/search?q={query}`. HTTPS is required. Firefox sends the selected text to that URL on invocation.
+Run this in **PowerShell**, at the repository root:
 
-## Icon: replace a single file
-
-**To change the icon everywhere** (toolbar, extensions menu, `about:addons`):
-
-1. Put your image in **`extension/icons/icon.png`**, replacing the provided image. The **filename must be `icon.png`** and the format must actually be PNG. Square **128×128 or 256×256** recommended.
-2. Reload the temporary extension under `about:debugging` (or rebuild/reinstall a signed package).
-
-No image conversion or manifest edits are required. Firefox scales the same PNG for all requested sizes.
-
-**To change only the toolbar icon at runtime:** drag a PNG/JPG/WebP onto the Icon panel in Settings. It is resized and stored locally, so it persists through Firefox restarts. Reset restores the on-disk icon. This runtime override **does not** change the add-on manager icon, which is fixed by the manifest.
-
-## Development
-
-```sh
-npm run check        # syntax, manifest, icon and ≤377-line checks
-npm test             # unit tests
-npm run build        # extension ZIP
+```powershell
+Compress-Archive -Path .\extension\* -DestinationPath .\firefoxfastsearch-1.2.0.zip -Force
 ```
 
-No external runtime dependencies. Source files must contain **no more than 377 lines each**. CI runs the checks and publishes a zipped build artifact.
+The ZIP must contain `manifest.json` at the archive root. You can alternatively run `python scripts/package.py` for a deterministic, extension-only ZIP in `dist/`. Neither npm nor Python is required **to use** the add-on.
 
-**Limitations:** selection is not accessible in Firefox's address bar, built-in PDF viewer or privileged browser pages; shortcuts reserved by Firefox/OS cannot be overridden.
+## Optional developer checks
+
+```sh
+node scripts/check.mjs
+node --test tests/*.test.mjs
+python scripts/package.py
+```
+
+The GitHub Actions workflow runs checks automatically. `package.json` provides npm aliases for developers but is never packaged in the extension. Every text source file is limited to **377 lines**.
+
+## Legal, privacy, and authenticity
+
+- [Privacy policy / Политика конфиденциальности](PRIVACY.md)
+- [Disclaimer / Отказ от гарантий](DISCLAIMER.md)
+- [Security and authenticity / Подлинность](SECURITY.md)
+- [Mozilla Add-ons listing draft / Текст для AMO](docs/AMO_LISTING.md)
+
+The official toolbar and listing icon comes from the packaged `extension/icons/icon.png`. A developer can replace it **in source** before packaging a different build, but users of the official installed add-on cannot upload icons through Settings. Modified copies or screenshots are not reliable evidence of official release behavior. Legal notices are subject to mandatory applicable law and cannot guarantee protection from complaints or liability.
+
+**Limitations:** no access to selections inside Firefox's address bar, built-in PDF viewer, or privileged pages. Firefox / OS-reserved shortcuts may not work.

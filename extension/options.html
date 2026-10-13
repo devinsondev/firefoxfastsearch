@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Firefox Fast Search</title>
+  <title>Fast Search for Firefox</title>
   <link rel="stylesheet" href="options.css">
   <script type="module" src="options.js"></script>
 </head>
@@ -12,7 +12,7 @@
     <header class="masthead">
       <div class="brand">
         <img src="icons/icon.png" alt="" width="49" height="49">
-        <div><p class="eyebrow">FIREFOX EXTENSION</p><h1>Fast Search <span>1.1</span></h1></div>
+        <div><p class="eyebrow">FIREFOX EXTENSION</p><h1>Fast Search <span>1.2</span></h1></div>
       </div>
       <div class="language" role="group" aria-label="Language / Язык">
         <button type="button" data-lang="ru" aria-pressed="true">RU</button>
@@ -82,21 +82,18 @@
       </div>
     </section>
 
-    <section class="icon-section" aria-labelledby="iconHeading">
-      <div class="section-title"><div><h2 id="iconHeading" data-i18n="iconHeading">Иконка расширения</h2>
-        <p data-i18n="iconHelp">Перетащи PNG, JPG или WebP сюда — иконка панели обновится сразу.</p></div></div>
-      <div class="icon-row"><div class="dropzone" id="iconDrop" tabindex="0" role="button" aria-label="Change icon">
-        <img id="iconPreview" src="icons/icon.png" width="72" height="72" alt="">
-        <div><strong data-i18n="dropImage">Перетащи картинку или нажми здесь</strong>
-        <small data-i18n="iconLimit">До 5 МБ, изображение автоматически станет квадратным</small></div>
-        <input type="file" id="iconFile" accept="image/png,image/jpeg,image/webp" hidden>
-      </div><button type="button" class="quiet" id="resetIcon" data-i18n="resetIcon">Вернуть стандартную</button></div>
-      <p class="hint" data-i18n="iconNote">Чтобы иконка обновилась также в about:addons, замени extension/icons/icon.png и перезагрузи расширение.</p>
+    <section class="disclosure" aria-labelledby="disclosureHeading">
+      <h2 id="disclosureHeading" data-i18n="disclosureHeading">Передача текста</h2>
+      <p data-i18n="disclosureText">После нажатия горячей клавиши выделенный текст будет передан выбранному поисковику. Не выделяй пароли и конфиденциальные данные.</p>
     </section>
 
     <div id="status" role="status" aria-live="polite"></div>
     <footer><button id="browserShortcuts" class="quiet" type="button" data-i18n="firefoxShortcuts">Сочетания клавиш Firefox ↗</button>
-      <p data-i18n="footer">Никакой аналитики. На служебных страницах и в адресной строке выделение недоступно.</p></footer>
+      <div class="footer-info">
+        <a href="legal.html" data-i18n="legalLink">Конфиденциальность и отказ от гарантий ↗</a>
+        <p data-i18n="footer">Без аналитики. На служебных страницах и в адресной строке выделение недоступно.</p>
+      </div>
+    </footer>
   </main>
 </body>
 </html>
