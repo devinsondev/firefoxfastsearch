@@ -1,99 +1,213 @@
-const COMMANDS = ["search-foreground", "search-background"];
-const status = document.querySelector("#status");
-const engine = document.querySelector("#engine");
-let recording = null;
+import { buildSearchUrl, defaultProfile, firstFreeSlot, initialProfiles, normalizeProfiles, SEARCH_ENGINES, SLOT_IDS } from "./core/profiles.js";
+import { applyLanguage, translate } from "./ui/i18n.js";
+import { assignShortcut, shortcutFromEvent } from "./ui/shortcuts.js";
+import { setupIconPicker } from "./ui/icon-picker.js";
 
-function notice(text, error = false) {
-  status.textContent = text;
-  status.classList.toggle("error", error);
+const $ = id => document.getElementById(id);
+const isMac = /Mac/i.test(navigator.platform);
+let profiles = [];
+let commands = [];
+let selectedId = null;
+let recordingId = null;
+let language = "ru";
+let saveChain = Promise.resolve();
+
+function t(key) { return translate(language, key); }
+function notify(message, error = false) {
+  const box = $("status");
+  box.textContent = t(message) === message ? message : t(message);
+  box.classList.toggle("error", error);
 }
-async function refresh() {
-  const commands = await browser.commands.getAll();
-  for (const name of COMMANDS) {
-    const shortcut = commands.find(item => item.name === name)?.shortcut || "";
-    const target = document.querySelector('[data-key="' + name + '"]');
-    target.textContent = shortcut || "Не назначено";
-    target.dataset.saved = shortcut;
-  }
+function activeProfile() { return profiles.find(profile => profile.id === selectedId); }
+function shortcutOf(id) { return commands.find(command => command.name === id)?.shortcut ?? ""; }
+function labelOf(profile) {
+  const engine = SEARCH_ENGINES[profile.engine]?.name ?? t("customEngine").replace("...", "");
+  const title = profile.name.trim() || engine;
+  return title;
 }
-async function assign(name, shortcut) {
-  const commands = await browser.commands.getAll();
-  if (shortcut && commands.some(item => item.name !== name && item.shortcut === shortcut)) {
-    notice("Эта комбинация уже назначена другой команде.", true);
-    return;
+function saveProfiles() {
+  const snapshot = profiles.map(profile => ({ ...profile }));
+  saveChain = saveChain.catch(() => {}).then(() => browser.storage.local.set({ profiles: snapshot }));
+  saveChain.catch(error => notify(String(error), true));
+  return saveChain;
+}
+async function loadCommands() { commands = await browser.commands.getAll(); }
+
+function renderTabs() {
+  const tabs = $("tabs");
+  tabs.replaceChildren();
+  for (const profile of profiles) {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = "profile-tab";
+    tab.role = "tab";
+    tab.setAttribute("aria-selected", String(profile.id === selectedId));
+    tab.setAttribute("tabindex", profile.id === selectedId ? "0" : "-1");
+    tab.id = `tab-${profile.id}`;
+    tab.title = `${labelOf(profile)} · ${profile.target === "foreground" ? t("modeForeground") : t("modeBackground")}`;
+    const name = document.createElement("span");
+    name.textContent = labelOf(profile);
+    const key = document.createElement("kbd");
+    key.textContent = shortcutOf(profile.id) || "—";
+    tab.append(name, key);
+    tab.addEventListener("click", () => { cancelRecording(); selectedId = profile.id; render(); });
+    tabs.append(tab);
   }
+  $("addProfile").disabled = profiles.length >= SLOT_IDS.length;
+  $("counter").textContent = `${profiles.length} / ${SLOT_IDS.length}`;
+}
+function renderEditor() {
+  const profile = activeProfile();
+  $("emptyState").hidden = Boolean(profile);
+  $("profileControls").hidden = !profile;
+  if (!profile) return;
+  $("editor").setAttribute("aria-labelledby", `tab-${profile.id}`);
+  $("profileHeading").textContent = labelOf(profile);
+  $("profileName").value = profile.name;
+  $("engine").value = profile.engine;
+  $("templateRow").hidden = profile.engine !== "custom";
+  $("customTemplate").value = profile.template;
+  for (const radio of document.querySelectorAll('[name="target"]')) {
+    radio.checked = radio.value === profile.target;
+  }
+  $("shortcutLabel").textContent = recordingId === profile.id ? t("pressKey") :
+    (shortcutOf(profile.id) || t("emptyKey"));
+  $("clearShortcut").disabled = !shortcutOf(profile.id);
+}
+function render() { applyLanguage(language); renderTabs(); renderEditor(); }
+function cancelRecording() { recordingId = null; renderEditor(); }
+
+async function addProfile() {
+  const slot = firstFreeSlot(profiles);
+  if (!slot) { notify("tooMany", true); return; }
+  cancelRecording();
+  profiles.push(defaultProfile(slot));
+  selectedId = slot;
+  render();
+  $("profileName").focus();
+  await saveProfiles();
+  notify("profileCreated");
+}
+async function removeProfile() {
+  if (!selectedId || !confirm(t("confirmDelete"))) return;
+  const id = selectedId;
   try {
-    await browser.commands.update({name, shortcut});
-    await refresh();
-    notice(shortcut ? "Назначено: " + shortcut : "Комбинация удалена.");
-  } catch (error) { notice(error.message, true); }
+    await assignShortcut(browser, id, "");
+    profiles = profiles.filter(profile => profile.id !== id);
+    selectedId = profiles[0]?.id ?? null;
+    recordingId = null;
+    await loadCommands();
+    render();
+    await saveProfiles();
+    notify("profileDeleted");
+  } catch (error) { notify(String(error), true); }
 }
-function cancel() {
-  if (!recording) return;
-  const target = document.querySelector('[data-key="' + recording + '"]');
-  target.textContent = target.dataset.saved || "Не назначено";
-  recording = null;
+async function changeShortcut(id, value) {
+  try {
+    await assignShortcut(browser, id, value);
+    recordingId = null;
+    await loadCommands();
+    render();
+    notify(value ? "configured" : "removed");
+  } catch (error) {
+    notify(["conflicting", "unsupported", "needsModifier"].includes(error.message) ? error.message :
+      String(error), true);
+  }
 }
-for (const button of document.querySelectorAll("[data-capture]")) {
-  button.addEventListener("click", () => {
-    cancel();
-    recording = button.dataset.capture;
-    button.querySelector("kbd").textContent = "Нажми клавиши…";
-    notice("Введи комбинацию. Esc — отмена.");
+
+$("addProfile").addEventListener("click", () => void addProfile());
+$("removeProfile").addEventListener("click", () => void removeProfile());
+$("profileName").addEventListener("input", event => {
+  const profile = activeProfile();
+  if (!profile) return;
+  profile.name = event.target.value.slice(0, 40);
+  renderTabs();
+  $("profileHeading").textContent = labelOf(profile);
+});
+$("profileName").addEventListener("change", () => void saveProfiles());
+$("engine").addEventListener("change", event => {
+  const profile = activeProfile();
+  if (!profile) return;
+  profile.engine = event.target.value;
+  render();
+  void saveProfiles();
+});
+$("customTemplate").addEventListener("change", event => {
+  const profile = activeProfile();
+  if (!profile) return;
+  try {
+    buildSearchUrl({ ...profile, template: event.target.value }, "test");
+    profile.template = event.target.value;
+    void saveProfiles();
+    notify("saved");
+  } catch { notify("invalidTemplate", true); }
+});
+for (const radio of document.querySelectorAll('[name="target"]')) {
+  radio.addEventListener("change", () => {
+    const profile = activeProfile();
+    if (!profile || !radio.checked) return;
+    profile.target = radio.value;
+    renderTabs();
+    void saveProfiles();
   });
 }
-document.addEventListener("keydown", async event => {
-  if (!recording) return;
+$("recordShortcut").addEventListener("click", () => {
+  recordingId = selectedId;
+  renderEditor();
+  $("recordShortcut").focus();
+});
+$("clearShortcut").addEventListener("click", () => {
+  if (selectedId) void changeShortcut(selectedId, "");
+});
+document.addEventListener("keydown", event => {
+  if (!recordingId) return;
   if (event.key === "Tab" && !event.ctrlKey && !event.altKey && !event.metaKey) {
-    cancel(); return;
+    cancelRecording(); return;
   }
   event.preventDefault();
   event.stopImmediatePropagation();
-  if (event.key === "Escape") { cancel(); notice("Отменено."); return; }
-  if (["Control", "Alt", "Shift", "Meta"].includes(event.key) || event.repeat) return;
-  const code = event.code || "";
-  let key = event.key;
-  if (/^Key[A-Z]$/.test(code)) key = code.slice(3);
-  else if (/^Digit[0-9]$/.test(code)) key = code.slice(5);
-  else if (key.startsWith("Arrow")) key = key.slice(5);
-  else if (key.length === 1) key = key.toUpperCase();
-  const functionKey = /^F(?:[1-9]|1[0-9])$/.test(key);
-  if (!functionKey && !/^[A-Z0-9]$/.test(key)) {
-    notice("Клавиша не поддерживается Firefox.", true); return;
-  }
-  const mods = [event.ctrlKey && "Ctrl", event.altKey && "Alt",
-    event.metaKey && "Command", event.shiftKey && "Shift"].filter(Boolean);
-  if ((!functionKey && !mods.some(mod => mod !== "Shift")) || mods.length > 2) {
-    notice("Нужно Ctrl/Alt/Command; максимум два модификатора.", true); return;
-  }
-  const name = recording;
-  cancel();
-  await assign(name, [...mods, key].join("+"));
+  if (event.key === "Escape") { cancelRecording(); notify("cancelled"); return; }
+  if (event.repeat) return;
+  try {
+    const shortcut = shortcutFromEvent(event, isMac);
+    if (shortcut) void changeShortcut(recordingId, shortcut);
+  } catch (error) { notify(error.message, true); }
 }, true);
-for (const button of document.querySelectorAll("[data-clear]")) {
-  button.addEventListener("click", () => { cancel(); void assign(button.dataset.clear, ""); });
-}
-for (const button of document.querySelectorAll("[data-reset]")) {
+document.addEventListener("pointerdown", event => {
+  if (recordingId && !$("recordShortcut").contains(event.target)) cancelRecording();
+}, true);
+for (const button of document.querySelectorAll("[data-lang]")) {
   button.addEventListener("click", async () => {
-    cancel();
-    try {
-      await browser.commands.reset(button.dataset.reset);
-      await refresh();
-      notice("Восстановлено.");
-    } catch (error) { notice(error.message, true); }
+    language = button.dataset.lang;
+    render();
+    try { await browser.storage.local.set({ uiLanguage: language }); }
+    catch (error) { notify(String(error), true); }
   });
 }
-document.querySelector("#browser-shortcuts").addEventListener("click", () =>
-  void browser.commands.openShortcutSettings().catch(error => notice(error.message, true)));
-engine.addEventListener("change", async () => {
-  try {
-    await browser.storage.local.set({searchEngine: engine.value});
-    notice("Поисковик сохранён.");
-  } catch (error) { notice(error.message, true); }
+$("tabs").addEventListener("keydown", event => {
+  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || !profiles.length) return;
+  event.preventDefault();
+  const index = profiles.findIndex(profile => profile.id === selectedId);
+  const next = event.key === "Home" ? 0 : event.key === "End" ? profiles.length - 1 :
+    (index + (event.key === "ArrowLeft" ? -1 : 1) + profiles.length) % profiles.length;
+  selectedId = profiles[next].id;
+  render();
+  $(`tab-${selectedId}`).focus();
 });
-browser.commands.onChanged.addListener(() => void refresh());
-window.addEventListener("focus", () => { if (!recording) void refresh(); });
+$("browserShortcuts").addEventListener("click", () =>
+  void browser.commands.openShortcutSettings().catch(error => notify(String(error), true)));
+browser.commands.onChanged.addListener(() => void loadCommands().then(render));
+window.addEventListener("focus", () => { if (!recordingId) void loadCommands().then(render); });
+setupIconPicker(browser, notify);
+
 void (async () => {
-  engine.value = (await browser.storage.local.get("searchEngine")).searchEngine || "google";
-  await refresh();
-})().catch(error => notice(error.message, true));
+  const settings = await browser.storage.local.get(["profiles", "searchEngine", "uiLanguage"]);
+  language = ["ru", "en"].includes(settings.uiLanguage) ? settings.uiLanguage :
+    (browser.i18n.getUILanguage().toLowerCase().startsWith("ru") ? "ru" : "en");
+  await loadCommands();
+  const stored = normalizeProfiles(settings.profiles);
+  profiles = stored ?? initialProfiles(settings.searchEngine, commands);
+  if (!stored) await saveProfiles();
+  selectedId = profiles[0]?.id ?? null;
+  render();
+})().catch(error => notify(String(error), true));

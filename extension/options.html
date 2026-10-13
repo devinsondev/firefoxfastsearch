@@ -1,38 +1,102 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Firefox Fast Search — настройки</title>
-<link rel="stylesheet" href="options.css">
-<script type="module" src="options.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Firefox Fast Search</title>
+  <link rel="stylesheet" href="options.css">
+  <script type="module" src="options.js"></script>
 </head>
 <body>
-<main>
-<header><p class="overline">FIREFOX EXTENSION</p><h1>⚡ Fast Search</h1>
-<p>Выдели слово → нажми клавишу → сразу получи результаты.</p></header>
-<h2>Горячие клавиши</h2>
-<section class="cards">
-<article><div class="tag">ПО УМОЛЧАНИЮ</div><h3>↗ Открыть и перейти</h3>
-<p>Результаты в новой активной вкладке.</p>
-<button type="button" data-capture="search-foreground"><kbd data-key="search-foreground">F1</kbd> <span>Изменить</span></button>
-<button class="secondary" data-clear="search-foreground">Убрать</button>
-<button class="secondary" data-reset="search-foreground">Сброс</button></article>
-<article><div class="tag">CUSTOM</div><h3>⊕ Открыть в фоне</h3>
-<p>Оставайся на текущей вкладке.</p>
-<button type="button" data-capture="search-background"><kbd data-key="search-background">Не назначено</kbd> <span>Изменить</span></button>
-<button class="secondary" data-clear="search-background">Убрать</button>
-<button class="secondary" data-reset="search-background">Сброс</button></article>
-</section>
-<p class="note">Нажми «Изменить» и введи комбинацию. Esc — отмена. Firefox может блокировать зарезервированные клавиши.</p>
-<section class="provider"><div><h2>Поисковик</h2><p>Для обеих команд</p></div>
-<label>Выбор системы <select id="engine">
-<option value="google">Google</option><option value="duckduckgo">DuckDuckGo</option>
-<option value="yandex">Яндекс</option><option value="bing">Bing</option>
-</select></label></section>
-<p id="status" role="status" aria-live="polite"></p>
-<button class="secondary" id="browser-shortcuts">Настройки сочетаний Firefox ↗</button>
-<footer>Без аналитики и фоновых запросов. На служебных страницах и в адресной строке не работает.</footer>
-</main>
+  <main>
+    <header class="masthead">
+      <div class="brand">
+        <img src="icons/icon.png" alt="" width="49" height="49">
+        <div><p class="eyebrow">FIREFOX EXTENSION</p><h1>Fast Search <span>1.1</span></h1></div>
+      </div>
+      <div class="language" role="group" aria-label="Language / Язык">
+        <button type="button" data-lang="ru" aria-pressed="true">RU</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </header>
+    <section class="intro">
+      <div><h2 data-i18n="headline">Выделил. Нажал. Нашёл.</h2>
+      <p data-i18n="subtitle">Настрой свои комбинации для разных поисковиков и режимов вкладки.</p></div>
+      <span class="hero-mark">⌘ <span>→</span> ↗</span>
+    </section>
+
+    <section class="workspace" aria-labelledby="profilesHeading">
+      <div class="section-title">
+        <div><h2 id="profilesHeading" data-i18n="profiles">Профили поиска</h2>
+        <p data-i18n="profilesHelp">Каждая вкладка — отдельная горячая клавиша и действие.</p></div>
+        <span id="counter" class="counter"></span>
+      </div>
+      <div class="tabbar" id="tabbar">
+        <div id="tabs" role="tablist" aria-label="Search profiles"></div>
+        <button id="addProfile" class="plus" type="button" data-i18n-title="addProfileTitle" aria-label="Добавить профиль">+</button>
+      </div>
+      <div class="editor" id="editor" role="tabpanel" aria-label="Profile settings">
+        <div id="emptyState" hidden>
+          <h3 data-i18n="emptyTitle">Пока нет профилей</h3>
+          <p data-i18n="emptyHelp">Нажми +, чтобы создать первый.</p>
+        </div>
+        <div id="profileControls">
+          <div class="editor-title"><div>
+            <p class="eyebrow" data-i18n="profileDetails">НАСТРОЙКА ПРОФИЛЯ</p>
+            <h3 id="profileHeading"></h3>
+          </div><button type="button" class="remove" id="removeProfile" data-i18n="deleteProfile">Удалить профиль</button></div>
+          <div class="form-grid">
+            <label class="field"><span data-i18n="displayName">Название (необязательно)</span>
+              <input id="profileName" maxlength="40" autocomplete="off" data-i18n-placeholder="namePlaceholder" placeholder="Например, перевод"></label>
+            <label class="field"><span data-i18n="searchEngine">Поисковик</span>
+              <select id="engine">
+                <option value="google">Google</option><option value="duckduckgo">DuckDuckGo</option>
+                <option value="yandex">Yandex</option><option value="bing">Bing</option>
+                <option value="custom" data-i18n="customEngine">Свой URL...</option>
+              </select></label>
+            <label class="field full" id="templateRow" hidden>
+              <span data-i18n="customUrl">Адрес поиска c {query}</span>
+              <input id="customTemplate" type="url" spellcheck="false" autocomplete="off" placeholder="https://example.com/search?q={query}">
+              <small data-i18n="urlHelp">Используй HTTPS и {query} вместо поискового запроса.</small>
+            </label>
+            <fieldset class="field full"><legend data-i18n="openMode">Открывать результаты</legend>
+              <div class="mode-grid">
+                <label class="mode"><input type="radio" name="target" value="foreground"><span>
+                  <b data-i18n="foreground">Перейти в новую вкладку</b>
+                  <small data-i18n="foregroundHelp">Сразу показывает результаты</small>
+                </span></label>
+                <label class="mode"><input type="radio" name="target" value="background"><span>
+                  <b data-i18n="background">Открыть в фоне</b>
+                  <small data-i18n="backgroundHelp">Оставаться на текущей вкладке</small>
+                </span></label>
+              </div>
+            </fieldset>
+            <div class="field full shortcut-group"><span data-i18n="hotkey">Горячая клавиша</span>
+              <div class="shortcut-row"><button type="button" id="recordShortcut" class="key-button">
+                <kbd id="shortcutLabel">F1</kbd><span data-i18n="change">Изменить</span>
+              </button><button type="button" id="clearShortcut" class="quiet" data-i18n="clear">Убрать</button></div>
+              <small data-i18n="hotkeyHelp">Нажми «Изменить», затем комбинацию. Esc — отмена.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="icon-section" aria-labelledby="iconHeading">
+      <div class="section-title"><div><h2 id="iconHeading" data-i18n="iconHeading">Иконка расширения</h2>
+        <p data-i18n="iconHelp">Перетащи PNG, JPG или WebP сюда — иконка панели обновится сразу.</p></div></div>
+      <div class="icon-row"><div class="dropzone" id="iconDrop" tabindex="0" role="button" aria-label="Change icon">
+        <img id="iconPreview" src="icons/icon.png" width="72" height="72" alt="">
+        <div><strong data-i18n="dropImage">Перетащи картинку или нажми здесь</strong>
+        <small data-i18n="iconLimit">До 5 МБ, изображение автоматически станет квадратным</small></div>
+        <input type="file" id="iconFile" accept="image/png,image/jpeg,image/webp" hidden>
+      </div><button type="button" class="quiet" id="resetIcon" data-i18n="resetIcon">Вернуть стандартную</button></div>
+      <p class="hint" data-i18n="iconNote">Чтобы иконка обновилась также в about:addons, замени extension/icons/icon.png и перезагрузи расширение.</p>
+    </section>
+
+    <div id="status" role="status" aria-live="polite"></div>
+    <footer><button id="browserShortcuts" class="quiet" type="button" data-i18n="firefoxShortcuts">Сочетания клавиш Firefox ↗</button>
+      <p data-i18n="footer">Никакой аналитики. На служебных страницах и в адресной строке выделение недоступно.</p></footer>
+  </main>
 </body>
 </html>

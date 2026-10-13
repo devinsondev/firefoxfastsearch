@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Firefox Fast Search",
-  "version": "1.0.0",
-  "description": "Search selected text using customizable shortcuts",
+  "name": "__MSG_extensionName__",
+  "description": "__MSG_extensionDescription__",
+  "version": "1.1.0",
+  "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {
       "id": "firefoxfastsearch@devinsondev",
@@ -21,7 +22,15 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Fast Search settings"
+    "default_title": "Firefox Fast Search — Settings",
+    "default_icon": "icons/icon.png"
+  },
+  "icons": {
+    "16": "icons/icon.png",
+    "32": "icons/icon.png",
+    "48": "icons/icon.png",
+    "96": "icons/icon.png",
+    "128": "icons/icon.png"
   },
   "options_ui": {
     "page": "options.html",
@@ -32,10 +41,52 @@
       "suggested_key": {
         "default": "F1"
       },
-      "description": "Search selected text in foreground"
+      "description": "Search selection (profile 1)"
     },
     "search-background": {
-      "description": "Search selected text in background"
+      "description": "Search selection (profile 2)"
+    },
+    "search-profile-03": {
+      "description": "Search selection (profile 3)"
+    },
+    "search-profile-04": {
+      "description": "Search selection (profile 4)"
+    },
+    "search-profile-05": {
+      "description": "Search selection (profile 5)"
+    },
+    "search-profile-06": {
+      "description": "Search selection (profile 6)"
+    },
+    "search-profile-07": {
+      "description": "Search selection (profile 7)"
+    },
+    "search-profile-08": {
+      "description": "Search selection (profile 8)"
+    },
+    "search-profile-09": {
+      "description": "Search selection (profile 9)"
+    },
+    "search-profile-10": {
+      "description": "Search selection (profile 10)"
+    },
+    "search-profile-11": {
+      "description": "Search selection (profile 11)"
+    },
+    "search-profile-12": {
+      "description": "Search selection (profile 12)"
+    },
+    "search-profile-13": {
+      "description": "Search selection (profile 13)"
+    },
+    "search-profile-14": {
+      "description": "Search selection (profile 14)"
+    },
+    "search-profile-15": {
+      "description": "Search selection (profile 15)"
+    },
+    "search-profile-16": {
+      "description": "Search selection (profile 16)"
     }
   }
 }
