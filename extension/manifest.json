@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Firefox Fast Search",
+  "version": "1.0.0",
+  "description": "Search selected text using customizable shortcuts",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "firefoxfastsearch@devinsondev",
+      "strict_min_version": "135.0"
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ],
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Fast Search settings"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "search-foreground": {
+      "suggested_key": {
+        "default": "F1"
+      },
+      "description": "Search selected text in foreground"
+    },
+    "search-background": {
+      "description": "Search selected text in background"
+    }
+  }
+}

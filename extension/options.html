@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Firefox Fast Search — настройки</title>
+<link rel="stylesheet" href="options.css">
+<script type="module" src="options.js"></script>
+</head>
+<body>
+<main>
+<header><p class="overline">FIREFOX EXTENSION</p><h1>⚡ Fast Search</h1>
+<p>Выдели слово → нажми клавишу → сразу получи результаты.</p></header>
+<h2>Горячие клавиши</h2>
+<section class="cards">
+<article><div class="tag">ПО УМОЛЧАНИЮ</div><h3>↗ Открыть и перейти</h3>
+<p>Результаты в новой активной вкладке.</p>
+<button type="button" data-capture="search-foreground"><kbd data-key="search-foreground">F1</kbd> <span>Изменить</span></button>
+<button class="secondary" data-clear="search-foreground">Убрать</button>
+<button class="secondary" data-reset="search-foreground">Сброс</button></article>
+<article><div class="tag">CUSTOM</div><h3>⊕ Открыть в фоне</h3>
+<p>Оставайся на текущей вкладке.</p>
+<button type="button" data-capture="search-background"><kbd data-key="search-background">Не назначено</kbd> <span>Изменить</span></button>
+<button class="secondary" data-clear="search-background">Убрать</button>
+<button class="secondary" data-reset="search-background">Сброс</button></article>
+</section>
+<p class="note">Нажми «Изменить» и введи комбинацию. Esc — отмена. Firefox может блокировать зарезервированные клавиши.</p>
+<section class="provider"><div><h2>Поисковик</h2><p>Для обеих команд</p></div>
+<label>Выбор системы <select id="engine">
+<option value="google">Google</option><option value="duckduckgo">DuckDuckGo</option>
+<option value="yandex">Яндекс</option><option value="bing">Bing</option>
+</select></label></section>
+<p id="status" role="status" aria-live="polite"></p>
+<button class="secondary" id="browser-shortcuts">Настройки сочетаний Firefox ↗</button>
+<footer>Без аналитики и фоновых запросов. На служебных страницах и в адресной строке не работает.</footer>
+</main>
+</body>
+</html>
