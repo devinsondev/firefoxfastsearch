@@ -23,13 +23,13 @@ function walk(directory) {
 walk(root);
 const manifest = JSON.parse(readFileSync(join(extension, "manifest.json"), "utf8"));
 assert.equal(manifest.version, JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version);
-assert.equal(Object.keys(manifest.commands).length, 16);
+assert.equal(Object.keys(manifest.commands).length, 17);
 assert.equal(manifest.commands["search-foreground"].suggested_key.default, "F1");
 assert.equal(manifest.action.default_popup, "popup.html");
 assert.equal(manifest.options_ui.page, "options.html");
 assert.ok(existsSync(join(extension, manifest.action.default_popup)));
 assert.ok(existsSync(join(extension, manifest.options_ui.page)));
-assert.deepEqual(manifest.permissions.slice().sort(), ["activeTab", "scripting", "storage"].sort());
+assert.deepEqual(manifest.permissions.slice().sort(), ["activeTab", "scripting", "storage", "windows"].sort());
 for (const iconPath of [...Object.values(manifest.icons), manifest.action.default_icon]) {
   const file = join(extension, iconPath);
   assert.ok(existsSync(file), `Missing icon: ${iconPath}`);
