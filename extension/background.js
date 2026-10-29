@@ -28,7 +28,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
     return multiSessionForWindow(browser, sender.tab?.windowId);
   }
   if (message?.action === "multiCloseGroup" && Number.isInteger(sender.tab?.windowId)) {
-    return closeMultiSession(browser, message.id, sender.tab.windowId);
+    return closeMultiSession(browser, message.id, sender.tab.windowId, sender.tab.id);
   }
   if (message?.action === "multiCloseAllManaged" &&
       sender.url?.startsWith(browser.runtime.getURL(""))) {
