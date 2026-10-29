@@ -95,6 +95,14 @@ async function refreshMultiClose() {
 }
 browser.runtime.onMessage.addListener(message => {
   if (message?.action === "multiSessionReady") void refreshMultiClose();
+  if (message?.action === "multiSourceControl") displayMultiClose(message.session);
+  if (message?.action === "multiSessionClosed" && managedSessionId === message.id) {
+    closeAllHost?.remove();
+    closeAllHost = null;
+    managedSessionId = null;
+    if (autoCloseTimer !== null) clearTimeout(autoCloseTimer);
+    autoCloseTimer = null;
+  }
 });
 // Covers navigation and fast-loading pages that finish before a batch is registered.
 void refreshMultiClose();
