@@ -20,9 +20,3 @@
   border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:12px}
 .multi-display label:has(input:checked){border-color:var(--accent);font-weight:650}
 .multi-display input{flex:none;accent-color:var(--accent);margin:0}
-
-.multi-split{display:flex;align-items:center;gap:8px;margin:10px 0;
-  padding:8px 10px;background:var(--surface2);border:1px solid var(--line);
-  border-radius:8px;color:var(--text);font-size:12px;cursor:pointer}
-.multi-split input{flex:none;margin:0;accent-color:var(--accent)}
-.multi-settings .multi-split-hint{margin:5px 0 12px;color:var(--muted);font-size:11px}
