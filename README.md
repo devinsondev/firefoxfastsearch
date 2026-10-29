@@ -1,13 +1,23 @@
 # Fast Search for Firefox
 
-Search selected webpage text with a hotkey. Results open in a new active or background tab, without the context menu.
+Search selected webpage text with a hotkey. Results open in a new active/background tab, a tiled grid of popup windows, or **one separate Firefox window containing a tab per search engine**.
 
 **Languages:** English and Russian, switchable in both settings views. **Firefox:** desktop 140 or newer.
 
 ## Features
 
 - **Compact toolbar popup:** click the extension icon to add/edit tabs, engines, shortcuts and foreground/background mode. Use **Full settings** to open the original spacious settings page; neither view replaces the other. Changes use the same local profiles.
-- **F1** defaults to searching Google in a new active tab.
+- **F1** searches Google in a new active tab; **F2** searches all configured multi-search sites using your chosen multi-search display mode.
+- **Ctrl+Alt+X** (default) closes **all windows created by multi-search**, including tiled popup windows or the single multi-tab window. Ordinary Firefox windows and the source webpage remain open. Change or disable this shortcut under **Multi-search → Close all windows shortcut** in either the toolbar popup or full settings. Firefox/OS reserved shortcuts may need a different key combination.
+- Select text and click the on-page magnifier for the same multi-search action.
+- Multi-search starts with Google, Yandex, Bing, and DuckDuckGo. Edit, remove, reorder (by deleting/re-adding), or add custom HTTPS search URL templates in the toolbar or full settings; up to 16 sites are supported.
+- **Multi-search display mode:** choose **Separate tiled windows** (default) or **One window with tabs** in the toolbar popup or full settings. The tabbed mode opens each search provider as a real Firefox tab in one new normal browser window, without using iframes or APIs.
+- **Firefox Split View (manual):** Firefox supports displaying two existing tabs side by side. In **One window with tabs** mode, you can select a pair of tabs yourself, right-click, and choose **Open in Split View**. Firefox currently offers no published WebExtension API to automate this, so the add-on does not show a misleading Split View checkbox.
+- **Close controls:** After starting multi-search, the original webpage also receives a floating **Close all** button; this works without access to search engine pages when the original content script is available. To show the same close control *inside the four search results pages*, click **Enable Close all buttons on search engines** in settings and approve Firefox's limited access to the four built-in search providers. Reload those result pages or open a fresh search after granting access. Custom sites may require separate site access.
+- In tiled mode, window creation is requested **in parallel**, not one after another. Firefox or the operating system may still stagger their appearance.
+- A top-centered **Close all** button appears on accessible managed search pages and on the starting page. This control closes only the associated group of windows. In tabbed mode it closes the whole created window with all its tabs. The **Ctrl+Alt+X** command and settings button close all managed groups without needing site permissions.
+- Set a **custom auto-close delay in whole seconds** (1–86400, maximum 24 hours), or use **0 to disable** it (the default). Windows are tracked per browser session. Auto-close uses browser alarms plus a page timer for responsive closing; timing can be delayed by browser or OS scheduling.
+- **Tiled mode only:** windows share the available screen work area, with at most as many windows as can fit the minimum size. Tabbed mode opens all configured sites (up to 16) regardless of screen space. For more tiled windows use a larger monitor; small screens intentionally skip excess sites. Browser window managers may enforce their own positioning or minimum sizes.
 - **+** adds a profile tab with its own shortcut, search provider, and tab mode (up to 16 independent profiles).
 - Search providers: Google, DuckDuckGo, Yandex, Bing, or a user-defined HTTPS URL with `{query}` placeholder.
 - **Fixed official icon:** user-uploaded toolbar icons are not supported. This reduces the ability to misrepresent the official add-on with offensive or misleading imagery.
@@ -16,7 +26,7 @@ Search selected webpage text with a hotkey. Results open in a new active or back
 
 ## Data transmission — read before use
 
-Pressing a search shortcut reads the selected text and navigates to the chosen search provider. **That text is sent to the search provider** as part of a URL; it can appear in Firefox history and the provider's logs. Do not search passwords, access tokens, or other secrets. Custom search URLs are controlled by the user.
+Pressing a shortcut or clicking the on-page multi-search icon reads selected text and navigates to the chosen provider(s). In multi-search mode, **the same selected text is sent to every configured provider whose tab or window opens**. That query appears in each provider's URL; it can appear in Firefox history and the provider's logs. Do not search passwords, access tokens, or other secrets. Custom search URLs are controlled by the user.
 
 The extension keeps search profiles and language settings locally. Firefox manages shortcut assignments. It does not send collected queries to developer-operated servers. See [PRIVACY.md](PRIVACY.md) and [DISCLAIMER.md](DISCLAIMER.md) (English and Russian) and the built-in **Privacy & Legal** page in Settings. The project is independent of Mozilla and search providers.
 
@@ -27,7 +37,7 @@ Firefox 140+ is required for Mozilla's built-in data transmission consent. The m
 1. Download or clone the repository.
 2. Open `about:debugging#/runtime/this-firefox` in Firefox 140+.
 3. Click **Load Temporary Add-on** and choose `extension/manifest.json`.
-4. Select webpage text and press `F1`; click the add-on icon for the compact popup. Choose **Full settings** for the existing full-page editor.
+4. Select webpage text and press `F1` for one search, or `F2` / the on-page magnifier for multi-search in the selected display mode; click the add-on icon for the compact popup. Choose **Full settings** for the existing full-page editor.
 
 Temporary add-ons disappear when Firefox restarts. To publish permanently, submit the built extension ZIP to Mozilla Add-ons for signing and review. Existing saved profiles and shortcuts are retained when upgrading the extension under the same ID: `firefoxfastsearch@devinsondev`. Version 1.2+ deletes any icon override previously saved by version 1.1. Firefox 139 and older are no longer supported.
 
@@ -36,7 +46,7 @@ Temporary add-ons disappear when Firefox restarts. To publish permanently, submi
 Run this in **PowerShell**, at the repository root:
 
 ```powershell
-Compress-Archive -Path .\extension\* -DestinationPath .\firefoxfastsearch-1.3.0.zip -Force
+Compress-Archive -Path .\extension\* -DestinationPath .\firefoxfastsearch-1.5.2.zip -Force
 ```
 
 The ZIP must contain `manifest.json` at the archive root. You can alternatively run `python scripts/package.py` for a deterministic, extension-only ZIP in `dist/`. Neither npm nor Python is required **to use** the add-on.

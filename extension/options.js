@@ -1,3 +1,4 @@
+import { initMultiUI } from "./ui/multi-ui.js";
 import { buildSearchUrl, defaultProfile, firstFreeSlot, initialProfiles, normalizeProfiles, SEARCH_ENGINES, SLOT_IDS } from "./core/profiles.js";
 import { applyLanguage, translate } from "./ui/i18n.js";
 import { assignShortcut, shortcutFromEvent } from "./ui/shortcuts.js";
@@ -237,3 +238,5 @@ void (async () => {
   selectedId = profiles[0]?.id ?? null;
   render();
 })().catch(error => notify(String(error), true));
+
+initMultiUI(() => language, notify);

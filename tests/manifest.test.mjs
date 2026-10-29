@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { STRINGS } from "../extension/ui/i18n.js";
+import { SEARCH_HOST_ORIGINS } from "../extension/core/search-hosts.js";
 
 const extension = new URL("../extension/", import.meta.url);
 const manifest = JSON.parse(readFileSync(new URL("manifest.json", extension), "utf8"));
@@ -9,7 +10,14 @@ test("preserves Firefox extension ID and F1 shortcut", () => {
   assert.equal(manifest.browser_specific_settings.gecko.id, "firefoxfastsearch@devinsondev");
   assert.equal(manifest.commands["search-foreground"].suggested_key.default, "F1");
 });
-test("declares 16 profile commands", () => assert.equal(Object.keys(manifest.commands).length, 16));
+test("declares 16 profile commands, multi-search and close command", () => {
+  assert.equal(Object.keys(manifest.commands).length, 18);
+  assert.equal(manifest.commands["close-multi-search"].suggested_key.default, "Ctrl+Alt+X");
+  assert.equal(manifest.commands["search-multi"].suggested_key.default, "F2");
+  assert.ok(manifest.permissions.includes("alarms"));
+  assert.ok(!manifest.permissions.includes("windows"));
+  assert.equal(manifest.content_scripts[0].js[0], "content-multi.js");
+});
 test("localization keys match across Russian and English", () => {
   assert.deepEqual(Object.keys(STRINGS.ru).sort(), Object.keys(STRINGS.en).sort());
 });
@@ -82,4 +90,10 @@ test("popup does not allow users to upload custom icons", () => {
   const popup = readFileSync(new URL("popup.html", extension), "utf8");
   assert.doesNotMatch(popup, /type="file"|iconDrop|iconFile|resetIcon/);
   assert.equal(manifest.action.default_icon, "icons/icon.png");
+});
+
+test("optional close button access is restricted to bundled search providers", () => {
+  assert.deepEqual(manifest.optional_host_permissions, SEARCH_HOST_ORIGINS);
+  assert.equal(manifest.optional_host_permissions.length, 4);
+  assert.ok(!manifest.optional_host_permissions.includes("<all_urls>"));
 });
