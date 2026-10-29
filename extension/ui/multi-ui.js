@@ -1,10 +1,15 @@
 import { DEFAULT_MULTI_TARGETS, MAX_MULTI_TARGETS, normalizeMultiTargets } from "../core/multi-search.js";
+import { MAX_AUTO_CLOSE_SECONDS, normalizeAutoCloseSeconds } from "../core/multi-sessions.js";
 const labels = {
   ru: { heading: "Мультипоиск — окна плиткой", help: "F2 или значок возле выделенного текста. Сайты получают один и тот же запрос.",
     run: "Искать выделенное", add: "Добавить сайт", remove: "Удалить", reset: "Вернуть 4 поисковика",
+    auto: "Автозакрытие через (секунд, 0 — выключено)", closeAll: "Закрыть все окна мультипоиска",
+    badSeconds: "Введите целое число от 0 до 86400.",
     url: "HTTPS-адрес с {query}", empty: "Выбери текст на странице.", safe: "Только HTTPS и {query}. Окна распределяются по экрану; если места мало, часть не откроется." },
   en: { heading: "Multi-search — tiled windows", help: "F2 or the icon beside selected text. Every selected site receives the query.",
     run: "Search selection", add: "Add website", remove: "Remove", reset: "Restore 4 defaults",
+    auto: "Auto-close after (seconds; 0 = off)", closeAll: "Close all multi-search windows",
+    badSeconds: "Enter a whole number from 0 to 86400.",
     url: "HTTPS URL with {query}", empty: "Select text on a webpage first.", safe: "HTTPS and {query} only. Windows tile across the screen; too-small screens open fewer windows." },
 };
 const choices = ["google", "yandex", "bing", "duckduckgo", "custom"];
@@ -19,6 +24,7 @@ export function initMultiUI(getLanguage, notify) {
   style.href = "multi.css";
   document.head.append(style);
   let targets = normalizeMultiTargets(undefined);
+  let autoSeconds = 0;
   let save = Promise.resolve();
   const txt = () => labels[getLanguage()] || labels.en;
   function store() {
@@ -88,16 +94,56 @@ export function initMultiUI(getLanguage, notify) {
     controls.append(add, reset, run);
     const warning = document.createElement("p");
     warning.textContent = t.safe;
-    section.append(controls, warning);
+    const closeAll = document.createElement("button");
+    closeAll.type = "button"; closeAll.textContent = t.closeAll;
+    closeAll.addEventListener("click", () =>
+      browser.runtime.sendMessage({ action: "multiCloseAllManaged" })
+        .catch(error => notify(String(error), true)));
+    controls.append(closeAll);
+    const autoLabel = document.createElement("label");
+    autoLabel.className = "multi-auto";
+    const autoText = document.createElement("span");
+    autoText.textContent = t.auto;
+    const autoInput = document.createElement("input");
+    autoInput.type = "number"; autoInput.min = "0";
+    autoInput.max = String(MAX_AUTO_CLOSE_SECONDS); autoInput.step = "1";
+    autoInput.value = String(autoSeconds);
+    autoInput.setAttribute("aria-label", t.auto);
+    autoInput.addEventListener("input", () => {
+      const value = Number(autoInput.value);
+      if (autoInput.value.trim() && Number.isSafeInteger(value) &&
+          value >= 0 && value <= MAX_AUTO_CLOSE_SECONDS) {
+        autoSeconds = value;
+        void browser.storage.local.set({ multiAutoCloseSeconds: autoSeconds })
+          .catch(error => notify(String(error), true));
+      }
+    });
+    autoInput.addEventListener("change", () => {
+      if (autoInput.value.trim() === "") {
+        autoSeconds = 0;
+        autoInput.value = "0";
+        void browser.storage.local.set({ multiAutoCloseSeconds: 0 })
+          .catch(error => notify(String(error), true));
+      } else if (!autoInput.checkValidity()) {
+        notify(t.badSeconds, true);
+        autoInput.value = String(autoSeconds);
+      }
+    });
+    autoLabel.append(autoText, autoInput);
+    section.append(controls, autoLabel, warning);
   }
-  browser.storage.local.get("multiTargets").then(settings => {
-    targets = normalizeMultiTargets(settings.multiTargets); render();
+  browser.storage.local.get(["multiTargets", "multiAutoCloseSeconds"]).then(settings => {
+    targets = normalizeMultiTargets(settings.multiTargets);
+    autoSeconds = normalizeAutoCloseSeconds(settings.multiAutoCloseSeconds); render();
   }).catch(error => notify(String(error), true));
   document.querySelectorAll("[data-lang]").forEach(button =>
     button.addEventListener("click", () => queueMicrotask(render)));
   browser.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && changes.multiTargets && !section.contains(document.activeElement)) {
-      targets = normalizeMultiTargets(changes.multiTargets.newValue); render();
+    if (area !== "local" || section.contains(document.activeElement)) return;
+    if (changes.multiTargets) targets = normalizeMultiTargets(changes.multiTargets.newValue);
+    if (changes.multiAutoCloseSeconds) {
+      autoSeconds = normalizeAutoCloseSeconds(changes.multiAutoCloseSeconds.newValue);
     }
+    if (changes.multiTargets || changes.multiAutoCloseSeconds) render();
   });
 }
