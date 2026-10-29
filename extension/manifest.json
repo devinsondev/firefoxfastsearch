@@ -20,7 +20,7 @@
     "activeTab",
     "scripting",
     "storage",
-    "windows"
+    "alarms"
   ],
   "background": {
     "scripts": [
