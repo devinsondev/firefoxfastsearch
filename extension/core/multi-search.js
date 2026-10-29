@@ -15,6 +15,40 @@ export function normalizeMultiDisplayMode(value) {
   return value === "tabs" ? "tabs" : DEFAULT_MULTI_DISPLAY_MODE;
 }
 
+export function normalizeSplitPairs(value) {
+  return value === true;
+}
+
+// Future-compatible: Firefox currently exposes splitViewId read-only. If a
+// supported createSplit API arrives, pair adjacent real tabs automatically.
+export async function createAvailableSplitPairs(api, windowId, count, enabled) {
+  if (!enabled || count < 2) return { applied: 0, requested: 0, supported: false };
+  const requested = Math.floor(count / 2);
+  if (typeof api.tabs?.createSplit !== "function") {
+    return { applied: 0, requested, supported: false };
+  }
+  let tabs;
+  try {
+    tabs = await api.tabs.query({ windowId });
+  } catch (error) {
+    console.warn("Fast Search: cannot read tabs for split view", error);
+    return { applied: 0, requested, supported: true };
+  }
+  // Only pair adjacent, newly created tabs in the new window.
+  const ordered = tabs.filter(item => Number.isInteger(item?.id))
+    .sort((left, right) => left.index - right.index).slice(0, count);
+  let applied = 0;
+  for (let index = 0; index + 1 < ordered.length; index += 2) {
+    try {
+      await api.tabs.createSplit([ordered[index].id, ordered[index + 1].id]);
+      applied++;
+    } catch (error) {
+      console.warn("Fast Search: could not create split view pair", error);
+    }
+  }
+  return { applied, requested, supported: true };
+}
+
 // The single-window mode uses real Firefox tabs, not embedded search iframes.
 export function tabbedWindowBounds(area) {
   const work = normalizedWorkArea(area);
@@ -125,7 +159,7 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
     } catch { /* Some window managers do not expose a work area. */ }
   }
   const settings = await api.storage.local.get([
-    "multiTargets", "multiAutoCloseSeconds", "uiLanguage", "multiDisplayMode",
+    "multiTargets", "multiAutoCloseSeconds", "uiLanguage", "multiDisplayMode", "multiSplitPairs",
   ]);
   const targets = normalizeMultiTargets(settings.multiTargets);
   const mode = normalizeMultiDisplayMode(settings.multiDisplayMode);
@@ -134,6 +168,7 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
   let openedWindows = [];
   let failed = 0;
   let skipped = 0;
+  let split = { applied: 0, requested: 0, supported: false };
   if (mode === "tabs") {
     // One normal Firefox window: one genuine search website per browser tab.
     // A popup type would hide browser chrome, including the tab strip.
@@ -142,8 +177,11 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
       const window = await api.windows.create({
         type: "normal", focused: true, url: urls, ...tabbedWindowBounds(area),
       });
-      if (Number.isInteger(window?.id)) openedWindows = [window];
-      else failed = 1;
+      if (Number.isInteger(window?.id)) {
+        openedWindows = [window];
+        split = await createAvailableSplitPairs(api, window.id, urls.length,
+          normalizeSplitPairs(settings.multiSplitPairs));
+      } else failed = 1;
     } catch (error) {
       failed = 1;
       console.warn("Fast Search: could not open tabbed search window", error);
@@ -186,5 +224,5 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
 
   return { opened: openedWindows.length, requested: targets.length,
     mode, tabs: mode === "tabs" && openedWindows.length ? targets.length : 0,
-    failed, skipped };
+    split, failed, skipped };
 }
