@@ -1,11 +1,10 @@
-import { openMultiSearch, MULTI_COMMAND } from "./core/multi-search.js";
+import { runSearchCommand } from "./core/command-router.js";
 import { ALARM_PREFIX, closeAllMultiSessions, closeMultiSession,
   forgetMultiWindow, multiSessionForWindow } from "./core/multi-sessions.js";
-import { searchByCommand } from "./core/search.js";
 
 browser.commands.onCommand.addListener((command, tab) => {
-  void (command === MULTI_COMMAND ? openMultiSearch(browser, { tab }) : searchByCommand(browser, command, tab)).catch(error =>
-    console.warn("Fast Search: search failed", error));
+  void runSearchCommand(browser, command, tab).catch(error =>
+    console.warn("Fast Search: command failed", error));
 });
 
 // Remove any icon uploaded in older versions. Only the bundled icon is supported.
