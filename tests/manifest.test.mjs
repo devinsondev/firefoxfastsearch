@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { STRINGS } from "../extension/ui/i18n.js";
+import { SEARCH_HOST_ORIGINS } from "../extension/core/search-hosts.js";
 
 const extension = new URL("../extension/", import.meta.url);
 const manifest = JSON.parse(readFileSync(new URL("manifest.json", extension), "utf8"));
@@ -88,4 +89,10 @@ test("popup does not allow users to upload custom icons", () => {
   const popup = readFileSync(new URL("popup.html", extension), "utf8");
   assert.doesNotMatch(popup, /type="file"|iconDrop|iconFile|resetIcon/);
   assert.equal(manifest.action.default_icon, "icons/icon.png");
+});
+
+test("optional close button access is restricted to bundled search providers", () => {
+  assert.deepEqual(manifest.optional_host_permissions, SEARCH_HOST_ORIGINS);
+  assert.equal(manifest.optional_host_permissions.length, 4);
+  assert.ok(!manifest.optional_host_permissions.includes("<all_urls>"));
 });
