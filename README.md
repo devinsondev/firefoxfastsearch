@@ -45,7 +45,7 @@ Temporary add-ons disappear when Firefox restarts. To publish permanently, submi
 Run this in **PowerShell**, at the repository root:
 
 ```powershell
-Compress-Archive -Path .\extension\* -DestinationPath .\firefoxfastsearch-1.4.0.zip -Force
+Compress-Archive -Path .\extension\* -DestinationPath .\firefoxfastsearch-1.5.0.zip -Force
 ```
 
 The ZIP must contain `manifest.json` at the archive root. You can alternatively run `python scripts/package.py` for a deterministic, extension-only ZIP in `dist/`. Neither npm nor Python is required **to use** the add-on.
