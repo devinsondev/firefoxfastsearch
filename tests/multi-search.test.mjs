@@ -215,12 +215,17 @@ test("split checkbox is disabled by default and normalizes untrusted settings", 
   assert.equal(normalizeSplitPairs(1), false);
 });
 
-test("native split view API missing: keep all tabs and report manual pairing", async () => {
+test("native split view API missing: preselect first two tabs for manual pairing", async () => {
   let queried = false;
+  const highlighted = [];
   const result = await createAvailableSplitPairs({
-    tabs: { query: async () => { queried = true; return []; } },
+    tabs: {
+      query: async () => { queried = true; return []; },
+      highlight: async options => { highlighted.push(options); },
+    },
   }, 19, 4, true);
   assert.deepEqual(result, { applied: 0, requested: 2, supported: false });
+  assert.deepEqual(highlighted, [{ windowId: 19, tabs: [0, 1], populate: false }]);
   assert.equal(queried, false);
 });
 
