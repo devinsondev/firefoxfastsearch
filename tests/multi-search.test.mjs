@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeMultiTargets, tileWindows, openMultiSearch } from "../extension/core/multi-search.js";
+import { normalizeMultiTargets, normalizeMultiDisplayMode, tabbedWindowBounds,
+  tileWindows, openMultiSearch } from "../extension/core/multi-search.js";
 
 test("first launch defaults to four providers", () => {
   assert.deepEqual(normalizeMultiTargets().map(x => x.engine),
@@ -103,4 +104,103 @@ test("no selection means no windows", async () => {
     scripting: { executeScript: async () => [{ result: { text: "", focused: true } }] },
   };
   assert.equal((await openMultiSearch(api)).opened, 0);
+});
+
+test("single window mode is opt-in and invalid saved values fall back to tiles", () => {
+  assert.equal(normalizeMultiDisplayMode(undefined), "windows");
+  assert.equal(normalizeMultiDisplayMode("window"), "windows");
+  assert.equal(normalizeMultiDisplayMode("tabs"), "tabs");
+  assert.deepEqual(tabbedWindowBounds(undefined), {});
+  assert.deepEqual(tabbedWindowBounds({ left: -1920, top: 20, width: 1920, height: 1080 }),
+    { left: -1776, top: 101, width: 1632, height: 918 });
+});
+
+test("tabbed mode opens one normal Firefox window with four actual search tabs", async () => {
+  const created = [], messages = [], store = {}, alarms = [];
+  const api = {
+    tabs: {
+      query: async options => options?.windowId === 55
+        ? [101, 102, 103, 104].map(id => ({ id, windowId: 55 }))
+        : [{ id: 20, windowId: 10 }],
+      sendMessage: async (id, value) => { messages.push({ id, value }); },
+    },
+    scripting: {
+      executeScript: async () => [{ result: { text: "forest fox", focused: true,
+        screenBounds: { left: 0, top: 0, width: 1920, height: 1080 } } }],
+    },
+    storage: {
+      local: { get: async () => ({ multiDisplayMode: "tabs", multiAutoCloseSeconds: 15 }) },
+      session: { get: async key => ({ [key]: store[key] }),
+        set: async entry => Object.assign(store, entry) },
+    },
+    windows: {
+      create: async options => {
+        created.push(options);
+        return { id: 55, tabs: [101, 102, 103, 104].map(id => ({ id })) };
+      },
+    },
+    alarms: { create: async (name, info) => { alarms.push({ name, info }); } },
+  };
+  const result = await openMultiSearch(api);
+  assert.equal(result.opened, 1);
+  assert.equal(result.requested, 4);
+  assert.equal(result.tabs, 4);
+  assert.equal(result.mode, "tabs");
+  assert.equal(result.failed, 0);
+  assert.equal(result.skipped, 0);
+  assert.equal(created.length, 1);
+  assert.equal(created[0].type, "normal");
+  assert.equal(created[0].focused, true);
+  assert.equal(created[0].url.length, 4);
+  assert.deepEqual(created[0].url.map(url => new URL(url).hostname),
+    ["www.google.com", "yandex.ru", "www.bing.com", "duckduckgo.com"]);
+  assert.ok(created[0].url.every(url => new URL(url).search.includes("forest")));
+  assert.deepEqual(store.multiSearchSessions[0].windowIds, [55]);
+  assert.equal(messages.length, 4);
+  assert.equal(alarms.length, 1);
+});
+
+test("tabbed mode can open all selected sites even when 16 tiled windows would not fit", async () => {
+  const created = [], sessions = {};
+  const api = {
+    tabs: {
+      query: async args => args?.windowId === 40 ? [] : [{ id: 1, windowId: 2 }],
+    },
+    storage: {
+      local: { get: async () => ({ multiDisplayMode: "tabs",
+        multiTargets: Array.from({ length: 16 }, () => ({ engine: "bing" })) }) },
+      session: { get: async key => ({ [key]: sessions[key] }),
+        set: async value => Object.assign(sessions, value) },
+    },
+    windows: { create: async details => {
+      created.push(details);
+      return { id: 40, tabs: [] };
+    } },
+    alarms: { create: async () => {} },
+  };
+  const result = await openMultiSearch(api, {
+    tab: { id: 1, windowId: 2 }, selectedText: "query",
+    screenBounds: { left: 0, top: 0, width: 1080, height: 720 },
+  });
+  assert.equal(result.opened, 1);
+  assert.equal(result.tabs, 16);
+  assert.equal(created[0].url.length, 16);
+  assert.deepEqual(sessions.multiSearchSessions[0].windowIds, [40]);
+});
+
+test("empty configured provider list never creates an empty tabbed window", async () => {
+  let called = false;
+  const api = {
+    tabs: { query: async () => [{ id: 12, windowId: 3 }] },
+    storage: { local: { get: async () => ({
+      multiDisplayMode: "tabs", multiTargets: [] }) } },
+    windows: { create: async () => { called = true; } },
+  };
+  const result = await openMultiSearch(api, {
+    tab: { id: 12, windowId: 3 }, selectedText: "anything",
+    screenBounds: { left: 0, top: 0, width: 1080, height: 720 },
+  });
+  assert.equal(result.opened, 0);
+  assert.equal(result.reason, "noTargets");
+  assert.equal(called, false);
 });
