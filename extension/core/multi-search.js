@@ -7,8 +7,8 @@ export const DEFAULT_MULTI_TARGETS = Object.freeze([
   { engine: "google" }, { engine: "yandex" },
   { engine: "bing" }, { engine: "duckduckgo" },
 ]);
-const MIN_WIDTH = 360;
-const MIN_HEIGHT = 260;
+const MIN_WIDTH = 420;
+const MIN_HEIGHT = 290;
 
 export function normalizeMultiTargets(value) {
   if (value === undefined || !Array.isArray(value)) {
