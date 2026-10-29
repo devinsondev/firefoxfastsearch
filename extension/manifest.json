@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
   "description": "__MSG_extensionDescription__",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {
@@ -101,6 +101,12 @@
         "default": "F2"
       },
       "description": "Search selection in tiled windows or a tabbed window"
+    },
+    "close-multi-search": {
+      "suggested_key": {
+        "default": "Ctrl+Alt+X"
+      },
+      "description": "Close all Firefox Fast Search multi-search windows"
     }
   },
   "content_scripts": [
