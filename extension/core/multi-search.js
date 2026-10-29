@@ -129,12 +129,15 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
     };
     try {
       await registerMultiSession(api, session);
-      // The page may load before windows.create resolves. Notify it again once tracked.
-      if (api.tabs?.sendMessage) {
-        await Promise.allSettled(openedWindows.flatMap(window => window.tabs || [])
+      // Firefox does not always populate window.tabs in windows.create().
+      // Look up tabs explicitly. If a content script is still loading, the
+      // background's tabs.onUpdated listener will notify it on completion.
+      await Promise.allSettled(openedWindows.map(async window => {
+        const tabs = await api.tabs.query({ windowId: window.id });
+        await Promise.allSettled(tabs
           .filter(tab => Number.isInteger(tab?.id))
           .map(tab => api.tabs.sendMessage(tab.id, { action: "multiSessionReady" })));
-      }
+      }));
     } catch (error) {
       console.warn("Fast Search: could not register multi-search window group", error);
     }
