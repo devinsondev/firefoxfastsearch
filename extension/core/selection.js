@@ -11,7 +11,10 @@ export function readSelection() {
     text = element?.getRootNode?.().getSelection?.()?.toString() ||
       window.getSelection()?.toString() || "";
   }
-  return { text, focused: document.hasFocus() };
+  return { text, focused: document.hasFocus(), screenBounds: {
+    left: screen.availLeft, top: screen.availTop,
+    width: screen.availWidth, height: screen.availHeight,
+  } };
 }
 
 export function preferFocusedSelection(results) {
