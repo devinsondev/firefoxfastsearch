@@ -29,6 +29,7 @@ export async function registerMultiSession(api, session) {
     sessions: [...sessions, {
       id: session.id,
       windowIds: [...new Set(session.windowIds.filter(Number.isInteger))],
+      sourceTabId: Number.isInteger(session.sourceTabId) ? session.sourceTabId : null,
       expiresAt: Number.isFinite(session.expiresAt) ? session.expiresAt : null,
       language: session.language === "ru" ? "ru" : "en",
     }],
@@ -48,15 +49,22 @@ export async function multiSessionForWindow(api, windowId) {
   return session ? { id: session.id, expiresAt: session.expiresAt, language: session.language } : null;
 }
 
-export async function closeMultiSession(api, sessionId, requestingWindowId) {
+export async function closeMultiSession(api, sessionId, requestingWindowId, requestingTabId) {
   if (typeof sessionId !== "string" || !sessionId.startsWith("multi-")) return false;
   const target = await updateSessions(api, sessions => {
-    const found = sessions.find(item => item.id === sessionId &&
-      (requestingWindowId === undefined || item.windowIds.includes(requestingWindowId)));
+    const found = sessions.find(item => item.id === sessionId && (
+      requestingWindowId === undefined ||
+      item.windowIds.includes(requestingWindowId) ||
+      (Number.isInteger(requestingTabId) && item.sourceTabId === requestingTabId)
+    ));
     return { sessions: found ? sessions.filter(item => item !== found) : sessions, result: found };
   });
   if (!target) return false;
   await Promise.allSettled([
+    Number.isInteger(target.sourceTabId)
+      ? api.tabs.sendMessage(target.sourceTabId, { action: "multiSessionClosed", id: sessionId })
+        .catch(() => {})
+      : Promise.resolve(),
     api.alarms.clear(ALARM_PREFIX + sessionId),
     ...target.windowIds.map(windowId => api.windows.remove(windowId)),
   ]);
