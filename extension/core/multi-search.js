@@ -25,6 +25,15 @@ export async function createAvailableSplitPairs(api, windowId, count, enabled) {
   if (!enabled || count < 2) return { applied: 0, requested: 0, supported: false };
   const requested = Math.floor(count / 2);
   if (typeof api.tabs?.createSplit !== "function") {
+    // Firefox 149+ supports manual Split View creation from selected tabs.
+    // Highlight the first pair so the user can right-click -> Open in Split View.
+    try {
+      if (typeof api.tabs?.highlight === "function") {
+        await api.tabs.highlight({ windowId, tabs: [0, 1], populate: false });
+      }
+    } catch (error) {
+      console.warn("Fast Search: could not preselect Split View tabs", error);
+    }
     return { applied: 0, requested, supported: false };
   }
   let tabs;
