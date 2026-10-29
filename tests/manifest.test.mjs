@@ -10,8 +10,9 @@ test("preserves Firefox extension ID and F1 shortcut", () => {
   assert.equal(manifest.browser_specific_settings.gecko.id, "firefoxfastsearch@devinsondev");
   assert.equal(manifest.commands["search-foreground"].suggested_key.default, "F1");
 });
-test("declares 16 profile commands and tiled multi-search", () => {
-  assert.equal(Object.keys(manifest.commands).length, 17);
+test("declares 16 profile commands, multi-search and close command", () => {
+  assert.equal(Object.keys(manifest.commands).length, 18);
+  assert.equal(manifest.commands["close-multi-search"].suggested_key.default, "Ctrl+Alt+X");
   assert.equal(manifest.commands["search-multi"].suggested_key.default, "F2");
   assert.ok(manifest.permissions.includes("alarms"));
   assert.ok(!manifest.permissions.includes("windows"));
