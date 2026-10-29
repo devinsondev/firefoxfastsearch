@@ -203,11 +203,19 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
     const session = {
       id: `multi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`,
       windowIds: openedWindows.map(window => window.id),
+      sourceTabId: sourceTab.id,
       expiresAt: seconds ? Date.now() + seconds * 1000 : null,
       language: settings.uiLanguage || "en",
     };
     try {
       await registerMultiSession(api, session);
+      // Keep a close button on the originating page, even if the search
+      // provider doesn't grant access for content scripts.
+      await api.tabs.sendMessage(sourceTab.id, {
+        action: "multiSourceControl", session: {
+          id: session.id, expiresAt: session.expiresAt, language: session.language,
+        },
+      }).catch(() => {});
       // Firefox does not always populate window.tabs in windows.create().
       // Look up tabs explicitly. If a content script is still loading, the
       // background's tabs.onUpdated listener will notify it on completion.
