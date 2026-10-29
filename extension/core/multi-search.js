@@ -1,5 +1,6 @@
 import { buildSearchUrl, SEARCH_ENGINES } from "./profiles.js";
 import { readSelection } from "./selection.js";
+import { normalizeAutoCloseSeconds, registerMultiSession } from "./multi-sessions.js";
 
 export const MULTI_COMMAND = "search-multi";
 export const MAX_MULTI_TARGETS = 16;
@@ -108,20 +109,37 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
   }
   if (!area) return { opened: 0, requested: 0, reason: "noScreen" };
 
-  const settings = await api.storage.local.get("multiTargets");
+  const settings = await api.storage.local.get(["multiTargets", "multiAutoCloseSeconds", "uiLanguage"]);
   const targets = normalizeMultiTargets(settings.multiTargets);
   const tiles = tileWindows(area, targets.length);
-  let opened = 0;
-  let failed = 0;
-  for (let index = 0; index < tiles.length; index++) {
+  // Start every browser window immediately; do not wait for previous windows to load.
+  const results = await Promise.allSettled(tiles.map((tile, index) =>
+    api.windows.create({ url: buildSearchUrl(targets[index], text), type: "popup", ...tile })));
+  const openedWindows = results.filter(result => result.status === "fulfilled" &&
+    Number.isInteger(result.value?.id)).map(result => result.value);
+  const failed = results.length - openedWindows.length;
+
+  if (openedWindows.length) {
+    const seconds = normalizeAutoCloseSeconds(settings.multiAutoCloseSeconds);
+    const session = {
+      id: `multi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`,
+      windowIds: openedWindows.map(window => window.id),
+      expiresAt: seconds ? Date.now() + seconds * 1000 : null,
+      language: settings.uiLanguage || "en",
+    };
     try {
-      const url = buildSearchUrl(targets[index], text);
-      await api.windows.create({ url, type: "popup", ...tiles[index] });
-      opened++;
+      await registerMultiSession(api, session);
+      // The page may load before windows.create resolves. Notify it again once tracked.
+      if (api.tabs?.sendMessage) {
+        await Promise.allSettled(openedWindows.flatMap(window => window.tabs || [])
+          .filter(tab => Number.isInteger(tab?.id))
+          .map(tab => api.tabs.sendMessage(tab.id, { action: "multiSessionReady" })));
+      }
     } catch (error) {
-      failed++;
-      console.warn("Fast Search: unable to open a multi-search window", error);
+      console.warn("Fast Search: could not register multi-search window group", error);
     }
   }
-  return { opened, requested: targets.length, failed, skipped: targets.length - tiles.length };
+
+  return { opened: openedWindows.length, requested: targets.length,
+    failed, skipped: targets.length - tiles.length };
 }
