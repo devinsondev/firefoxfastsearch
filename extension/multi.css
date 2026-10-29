@@ -20,3 +20,17 @@
   border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:12px}
 .multi-display label:has(input:checked){border-color:var(--accent);font-weight:650}
 .multi-display input{flex:none;accent-color:var(--accent);margin:0}
+
+.multi-shortcut{margin:13px 0;padding:11px;border:1px solid var(--line);
+  border-radius:9px;background:var(--surface2);min-width:0}
+.multi-shortcut strong{display:block;color:var(--text);font-size:12px}
+.multi-shortcut p{margin:3px 0 8px;font-size:11px;line-height:1.4}
+.multi-shortcut-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.multi-shortcut-controls button{padding:7px 9px;border-radius:7px;
+  border:1px solid var(--line);background:var(--surface);
+  color:var(--text);font-size:11px}
+.multi-shortcut-controls .multi-shortcut-record{display:flex;align-items:center;
+  justify-content:space-between;gap:10px;min-width:0;max-width:100%}
+.multi-shortcut-record kbd{background:var(--surface2);padding:4px 6px;
+  border:1px solid var(--line);border-radius:5px;font:600 11px monospace}
+.multi-shortcut-controls button:disabled{opacity:.45}
