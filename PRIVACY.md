@@ -11,7 +11,7 @@
 
 **Where data goes:** The selected text becomes a search query in the new tab's or popup windows' URLs and is sent to the **search provider(s) chosen by the user** (Google, DuckDuckGo, Yandex, Bing, or a user-configured HTTPS provider). Multi-search sends the same query to **every enabled destination whose window opens**. Third-party providers may log, process, retain or share this query under their own policies. The browser may save the query URL in browsing history. Avoid selecting passwords, credentials, private messages, or other confidential data.
 
-**What stays local:** Search profiles, custom provider URL templates, foreground/background behavior and language settings are stored with Firefox's local extension storage. Shortcut mappings are managed by Firefox. The extension does not send these settings to the developer.
+**What stays local:** Search profiles, custom provider URL templates, foreground/background behavior, auto-close delay in seconds, and language settings are stored with Firefox's local extension storage. Only IDs of extension-created popup windows and their optional closure deadline are kept temporarily in browser session storage to support Close all and automatic cleanup. Shortcut mappings are managed by Firefox. The extension does not send these settings to the developer.
 
 **What the developer does not collect:** There is no developer-operated server, analytics service, advertising tracker, telemetry pipeline, or sale of user data. The extension does not intentionally collect search query logs or account identifiers for the developer.
 
@@ -25,7 +25,7 @@
 
 **Куда отправляются данные:** Выделенный текст становится запросом в URL новой вкладки или отдельных окон и передаётся **выбранным пользователем поисковикам** (Google, DuckDuckGo, Yandex, Bing или своему HTTPS-поисковику). При мультипоиске один запрос отправляется каждому открытому поисковику. Сторонний сайт может обрабатывать, хранить и передавать запрос в соответствии со своей политикой. URL может попасть в историю Firefox. Не выделяйте пароли, токены, личные сообщения или другую конфиденциальную информацию.
 
-**Что хранится локально:** Профили поиска, шаблоны пользовательских поисковиков, режимы вкладок и язык сохраняются в локальном хранилище Firefox. Привязками клавиш управляет Firefox. Эти настройки не отправляются разработчику.
+**Что хранится локально:** Профили поиска, шаблоны пользовательских поисковиков, режимы вкладок, время автозакрытия в секундах и язык сохраняются в локальном хранилище Firefox. Идентификаторы открытых расширением окон и срок их закрытия временно хранятся в памяти сеанса браузера — для кнопки «Закрыть все» и автозакрытия. Привязками клавиш управляет Firefox. Эти настройки не отправляются разработчику.
 
 **Что разработчик не собирает:** У проекта нет собственного сервера для запросов, аналитики, рекламных трекеров, телеметрии или продажи пользовательских данных. Расширение не ведёт поисковые журналы или учётные записи для разработчика.
 
