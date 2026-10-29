@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeMultiTargets, normalizeMultiDisplayMode, normalizeSplitPairs,
-  createAvailableSplitPairs, tabbedWindowBounds, tileWindows, openMultiSearch
+import { normalizeMultiTargets, normalizeMultiDisplayMode,
+  tabbedWindowBounds, tileWindows, openMultiSearch
 } from "../extension/core/multi-search.js";
 
 test("first launch defaults to four providers", () => {
@@ -208,56 +208,3 @@ test("empty configured provider list never creates an empty tabbed window", asyn
   assert.equal(called, false);
 });
 
-test("split checkbox is disabled by default and normalizes untrusted settings", () => {
-  assert.equal(normalizeSplitPairs(undefined), false);
-  assert.equal(normalizeSplitPairs(true), true);
-  assert.equal(normalizeSplitPairs("true"), false);
-  assert.equal(normalizeSplitPairs(1), false);
-});
-
-test("native split view API missing: preselect first two tabs for manual pairing", async () => {
-  let queried = false;
-  const highlighted = [];
-  const result = await createAvailableSplitPairs({
-    tabs: {
-      query: async () => { queried = true; return []; },
-      highlight: async options => { highlighted.push(options); },
-    },
-  }, 19, 4, true);
-  assert.deepEqual(result, { applied: 0, requested: 2, supported: false });
-  assert.deepEqual(highlighted, [{ windowId: 19, tabs: [0, 1], populate: false }]);
-  assert.equal(queried, false);
-});
-
-test("native split API available: pairs consecutive real tabs without iframes", async () => {
-  const calls = [];
-  const api = { tabs: {
-    query: async () => [0, 1, 2, 3, 4].map(index => ({
-      id: index + 50, index, windowId: 77,
-    })),
-    createSplit: async ids => { calls.push(ids); return calls.length; },
-  } };
-  const result = await createAvailableSplitPairs(api, 77, 5, true);
-  assert.deepEqual(result, { applied: 2, requested: 2, supported: true });
-  assert.deepEqual(calls, [[50, 51], [52, 53]]);
-});
-
-test("native split failures cannot lose the opened multi-search window", async () => {
-  const calls = [];
-  const api = { tabs: {
-    query: async () => [0, 1, 2, 3].map(index => ({
-      id: index + 60, index, windowId: 77,
-    })),
-    createSplit: async ids => {
-      calls.push(ids);
-      if (ids[0] === 60) throw Error("unsupported split");
-      return 1;
-    },
-  } };
-  const oldWarn = console.warn;
-  console.warn = () => {};
-  try {
-    const result = await createAvailableSplitPairs(api, 77, 4, true);
-    assert.deepEqual(result, { applied: 1, requested: 2, supported: true });
-  } finally { console.warn = oldWarn; }
-});
