@@ -4,7 +4,8 @@ let lastText = "";
 let lastRect;
 function removeMultiIcon() { icon?.remove(); icon = null; }
 document.addEventListener("mouseup", event => {
-  if (event.button !== 0 || icon?.contains(event.target) ||\n      (closeAllHost && event.composedPath().includes(closeAllHost))) return;
+  if (event.button !== 0 || icon?.contains(event.target) ||
+      (closeAllHost && event.composedPath().includes(closeAllHost))) return;
   removeMultiIcon();
   const selection = window.getSelection();
   const text = selection?.toString().trim() || "";
