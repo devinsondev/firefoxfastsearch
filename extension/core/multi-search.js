@@ -10,6 +10,23 @@ export const DEFAULT_MULTI_TARGETS = Object.freeze([
 ]);
 const MIN_WIDTH = 420;
 const MIN_HEIGHT = 290;
+export const DEFAULT_MULTI_DISPLAY_MODE = "windows";
+export function normalizeMultiDisplayMode(value) {
+  return value === "tabs" ? "tabs" : DEFAULT_MULTI_DISPLAY_MODE;
+}
+
+// The single-window mode uses real Firefox tabs, not embedded search iframes.
+export function tabbedWindowBounds(area) {
+  const work = normalizedWorkArea(area);
+  if (!work) return {};
+  const width = Math.min(work.width, Math.max(900, Math.round(work.width * 0.85)));
+  const height = Math.min(work.height, Math.max(650, Math.round(work.height * 0.85)));
+  return {
+    left: work.left + Math.floor((work.width - width) / 2),
+    top: work.top + Math.floor((work.height - height) / 2),
+    width, height,
+  };
+}
 
 export function normalizeMultiTargets(value) {
   if (value === undefined || !Array.isArray(value)) {
@@ -107,17 +124,41 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
       area = normalizedWorkArea(windowInfo);
     } catch { /* Some window managers do not expose a work area. */ }
   }
-  if (!area) return { opened: 0, requested: 0, reason: "noScreen" };
-
-  const settings = await api.storage.local.get(["multiTargets", "multiAutoCloseSeconds", "uiLanguage"]);
+  const settings = await api.storage.local.get([
+    "multiTargets", "multiAutoCloseSeconds", "uiLanguage", "multiDisplayMode",
+  ]);
   const targets = normalizeMultiTargets(settings.multiTargets);
-  const tiles = tileWindows(area, targets.length);
-  // Start every browser window immediately; do not wait for previous windows to load.
-  const results = await Promise.allSettled(tiles.map((tile, index) =>
-    api.windows.create({ url: buildSearchUrl(targets[index], text), type: "popup", ...tile })));
-  const openedWindows = results.filter(result => result.status === "fulfilled" &&
-    Number.isInteger(result.value?.id)).map(result => result.value);
-  const failed = results.length - openedWindows.length;
+  const mode = normalizeMultiDisplayMode(settings.multiDisplayMode);
+  if (!targets.length) return { opened: 0, requested: 0, mode, reason: "noTargets" };
+
+  let openedWindows = [];
+  let failed = 0;
+  let skipped = 0;
+  if (mode === "tabs") {
+    // One normal Firefox window: one genuine search website per browser tab.
+    // A popup type would hide browser chrome, including the tab strip.
+    const urls = targets.map(target => buildSearchUrl(target, text));
+    try {
+      const window = await api.windows.create({
+        type: "normal", focused: true, url: urls, ...tabbedWindowBounds(area),
+      });
+      if (Number.isInteger(window?.id)) openedWindows = [window];
+      else failed = 1;
+    } catch (error) {
+      failed = 1;
+      console.warn("Fast Search: could not open tabbed search window", error);
+    }
+  } else {
+    if (!area) return { opened: 0, requested: targets.length, mode, reason: "noScreen" };
+    const tiles = tileWindows(area, targets.length);
+    skipped = targets.length - tiles.length;
+    // Start every browser window immediately; do not wait for previous windows to load.
+    const results = await Promise.allSettled(tiles.map((tile, index) =>
+      api.windows.create({ url: buildSearchUrl(targets[index], text), type: "popup", ...tile })));
+    openedWindows = results.filter(result => result.status === "fulfilled" &&
+      Number.isInteger(result.value?.id)).map(result => result.value);
+    failed = results.length - openedWindows.length;
+  }
 
   if (openedWindows.length) {
     const seconds = normalizeAutoCloseSeconds(settings.multiAutoCloseSeconds);
@@ -144,5 +185,6 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
   }
 
   return { opened: openedWindows.length, requested: targets.length,
-    failed, skipped: targets.length - tiles.length };
+    mode, tabs: mode === "tabs" && openedWindows.length ? targets.length : 0,
+    failed, skipped };
 }
