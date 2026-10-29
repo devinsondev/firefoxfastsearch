@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeMultiTargets, normalizeMultiDisplayMode, tabbedWindowBounds,
-  tileWindows, openMultiSearch } from "../extension/core/multi-search.js";
+import { normalizeMultiTargets, normalizeMultiDisplayMode, normalizeSplitPairs,
+  createAvailableSplitPairs, tabbedWindowBounds, tileWindows, openMultiSearch
+} from "../extension/core/multi-search.js";
 
 test("first launch defaults to four providers", () => {
   assert.deepEqual(normalizeMultiTargets().map(x => x.engine),
@@ -74,7 +75,8 @@ test("four windows launch concurrently and auto-close uses user-supplied seconds
   assert.equal(peak, 4, "all window creations should begin before any finishes");
   assert.equal(new Set(created.map(x => new URL(x.url).hostname)).size, 4);
   assert.ok(created.every(x => x.type === "popup"));
-  assert.equal(messages.length, 4);
+  assert.equal(messages.length, 5);
+  assert.ok(messages.some(x => (x.message || x.value).action === "multiSourceControl"));
   assert.equal(alarms.length, 1);
   assert.ok(alarms[0].info.when >= startTime + 12000);
   assert.ok(alarms[0].info.when <= Date.now() + 12000);
@@ -156,7 +158,8 @@ test("tabbed mode opens one normal Firefox window with four actual search tabs",
     ["www.google.com", "yandex.ru", "www.bing.com", "duckduckgo.com"]);
   assert.ok(created[0].url.every(url => new URL(url).search.includes("forest")));
   assert.deepEqual(store.multiSearchSessions[0].windowIds, [55]);
-  assert.equal(messages.length, 4);
+  assert.equal(messages.length, 5);
+  assert.ok(messages.some(x => (x.message || x.value).action === "multiSourceControl"));
   assert.equal(alarms.length, 1);
 });
 
@@ -203,4 +206,53 @@ test("empty configured provider list never creates an empty tabbed window", asyn
   assert.equal(result.opened, 0);
   assert.equal(result.reason, "noTargets");
   assert.equal(called, false);
+});
+
+test("split checkbox is disabled by default and normalizes untrusted settings", () => {
+  assert.equal(normalizeSplitPairs(undefined), false);
+  assert.equal(normalizeSplitPairs(true), true);
+  assert.equal(normalizeSplitPairs("true"), false);
+  assert.equal(normalizeSplitPairs(1), false);
+});
+
+test("native split view API missing: keep all tabs and report manual pairing", async () => {
+  let queried = false;
+  const result = await createAvailableSplitPairs({
+    tabs: { query: async () => { queried = true; return []; } },
+  }, 19, 4, true);
+  assert.deepEqual(result, { applied: 0, requested: 2, supported: false });
+  assert.equal(queried, false);
+});
+
+test("native split API available: pairs consecutive real tabs without iframes", async () => {
+  const calls = [];
+  const api = { tabs: {
+    query: async () => [0, 1, 2, 3, 4].map(index => ({
+      id: index + 50, index, windowId: 77,
+    })),
+    createSplit: async ids => { calls.push(ids); return calls.length; },
+  } };
+  const result = await createAvailableSplitPairs(api, 77, 5, true);
+  assert.deepEqual(result, { applied: 2, requested: 2, supported: true });
+  assert.deepEqual(calls, [[50, 51], [52, 53]]);
+});
+
+test("native split failures cannot lose the opened multi-search window", async () => {
+  const calls = [];
+  const api = { tabs: {
+    query: async () => [0, 1, 2, 3].map(index => ({
+      id: index + 60, index, windowId: 77,
+    })),
+    createSplit: async ids => {
+      calls.push(ids);
+      if (ids[0] === 60) throw Error("unsupported split");
+      return 1;
+    },
+  } };
+  const oldWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const result = await createAvailableSplitPairs(api, 77, 4, true);
+    assert.deepEqual(result, { applied: 1, requested: 2, supported: true });
+  } finally { console.warn = oldWarn; }
 });
