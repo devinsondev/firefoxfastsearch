@@ -100,7 +100,7 @@
       "suggested_key": {
         "default": "F2"
       },
-      "description": "Search selection in tiled popup windows"
+      "description": "Search selection in tiled windows or a tabbed window"
     }
   },
   "content_scripts": [
