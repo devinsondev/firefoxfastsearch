@@ -78,3 +78,22 @@ test("global close action closes all registered batches, but no ordinary windows
   assert.deepEqual(removed.sort((a,b) => a - b), [10,20,30]);
   assert.equal(await multiSessionForWindow(api, 200), null);
 });
+
+test("originating tab may close only the matching managed group", async () => {
+  const { api, removed } = mockBrowser();
+  const notices = [];
+  api.tabs = { sendMessage: async (id, message) => { notices.push({ id, message }); } };
+  await registerMultiSession(api, {
+    id: "multi-origin", windowIds: [100, 101], sourceTabId: 77,
+  });
+  await registerMultiSession(api, {
+    id: "multi-other", windowIds: [200], sourceTabId: 88,
+  });
+  assert.equal(await closeMultiSession(api, "multi-origin", 999, 88), false);
+  assert.deepEqual(removed, []);
+  assert.equal(await closeMultiSession(api, "multi-origin", 999, 77), true);
+  assert.deepEqual(removed.sort((a,b) => a-b), [100, 101]);
+  assert.ok(notices.some(({ id, message }) =>
+    id === 77 && message.action === "multiSessionClosed"));
+  assert.ok(await multiSessionForWindow(api, 200));
+});
