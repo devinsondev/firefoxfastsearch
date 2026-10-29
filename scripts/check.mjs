@@ -29,7 +29,7 @@ assert.equal(manifest.action.default_popup, "popup.html");
 assert.equal(manifest.options_ui.page, "options.html");
 assert.ok(existsSync(join(extension, manifest.action.default_popup)));
 assert.ok(existsSync(join(extension, manifest.options_ui.page)));
-assert.deepEqual(manifest.permissions.slice().sort(), ["activeTab", "scripting", "storage", "windows"].sort());
+assert.deepEqual(manifest.permissions.slice().sort(), ["activeTab", "scripting", "storage", "alarms"].sort());
 for (const iconPath of [...Object.values(manifest.icons), manifest.action.default_icon]) {
   const file = join(extension, iconPath);
   assert.ok(existsSync(file), `Missing icon: ${iconPath}`);
