@@ -112,5 +112,11 @@
         "content-multi.js"
       ]
     }
+  ],
+  "optional_host_permissions": [
+    "https://*.google.com/*",
+    "https://*.yandex.ru/*",
+    "https://*.bing.com/*",
+    "https://*.duckduckgo.com/*"
   ]
 }
