@@ -1,16 +1,23 @@
-import { DEFAULT_MULTI_TARGETS, MAX_MULTI_TARGETS, normalizeMultiTargets } from "../core/multi-search.js";
+import { DEFAULT_MULTI_TARGETS, MAX_MULTI_TARGETS, normalizeMultiTargets,
+  normalizeMultiDisplayMode } from "../core/multi-search.js";
 import { MAX_AUTO_CLOSE_SECONDS, normalizeAutoCloseSeconds } from "../core/multi-sessions.js";
 const labels = {
-  ru: { heading: "Мультипоиск — окна плиткой", help: "F2 или значок возле выделенного текста. Сайты получают один и тот же запрос.",
+  ru: { heading: "Мультипоиск", help: "F2 или значок возле выделенного текста. Сайты получают один и тот же запрос.",
+    displayMode: "Как открывать поисковики", tiled: "Отдельные окна плиткой",
+    tabbed: "Одно окно с вкладками",
     run: "Искать выделенное", add: "Добавить сайт", remove: "Удалить", reset: "Вернуть 4 поисковика",
     auto: "Автозакрытие через (секунд, 0 — выключено)", closeAll: "Закрыть все окна мультипоиска",
     badSeconds: "Введите целое число от 0 до 86400.",
-    url: "HTTPS-адрес с {query}", empty: "Выбери текст на странице.", safe: "Только HTTPS и {query}. Окна распределяются по экрану; если места мало, часть не откроется." },
-  en: { heading: "Multi-search — tiled windows", help: "F2 or the icon beside selected text. Every selected site receives the query.",
+    url: "HTTPS-адрес с {query}", empty: "Выбери текст на странице.", safe: "Только HTTPS и {query}. Окна распределяются по экрану; если места мало, часть не откроется.",
+    safeTabs: "Только HTTPS и {query}. Все выбранные поисковики откроются вкладками в одном отдельном окне Firefox." },
+  en: { heading: "Multi-search", help: "F2 or the icon beside selected text. Every selected site receives the query.",
+    displayMode: "How to open search engines", tiled: "Separate tiled windows",
+    tabbed: "One window with tabs",
     run: "Search selection", add: "Add website", remove: "Remove", reset: "Restore 4 defaults",
     auto: "Auto-close after (seconds; 0 = off)", closeAll: "Close all multi-search windows",
     badSeconds: "Enter a whole number from 0 to 86400.",
-    url: "HTTPS URL with {query}", empty: "Select text on a webpage first.", safe: "HTTPS and {query} only. Windows tile across the screen; too-small screens open fewer windows." },
+    url: "HTTPS URL with {query}", empty: "Select text on a webpage first.", safe: "HTTPS and {query} only. Windows tile across the screen; too-small screens open fewer windows.",
+    safeTabs: "HTTPS and {query} only. Every selected provider opens as a tab in one separate Firefox window." },
 };
 const choices = ["google", "yandex", "bing", "duckduckgo", "custom"];
 const names = { google: "Google", yandex: "Yandex", bing: "Bing", duckduckgo: "DuckDuckGo", custom: "Custom URL / Свой URL" };
@@ -25,6 +32,7 @@ export function initMultiUI(getLanguage, notify) {
   document.head.append(style);
   let targets = normalizeMultiTargets(undefined);
   let autoSeconds = 0;
+  let displayMode = "windows";
   let save = Promise.resolve();
   const txt = () => labels[getLanguage()] || labels.en;
   function store() {
@@ -40,6 +48,31 @@ export function initMultiUI(getLanguage, notify) {
     const hint = document.createElement("p");
     hint.textContent = t.help;
     section.append(header, hint);
+    const modeFieldset = document.createElement("fieldset");
+    modeFieldset.className = "multi-display";
+    const legend = document.createElement("legend");
+    legend.textContent = t.displayMode;
+    modeFieldset.append(legend);
+    for (const [value, labelText] of [["windows", t.tiled], ["tabs", t.tabbed]]) {
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "multiDisplayMode";
+      input.value = value;
+      input.checked = displayMode === value;
+      input.addEventListener("change", () => {
+        if (!input.checked) return;
+        displayMode = value;
+        void browser.storage.local.set({ multiDisplayMode: value })
+          .catch(error => notify(String(error), true));
+        render();
+      });
+      const text = document.createElement("span");
+      text.textContent = labelText;
+      label.append(input, text);
+      modeFieldset.append(label);
+    }
+    section.append(modeFieldset);
     const list = document.createElement("div");
     list.className = "multi-list";
     targets.forEach((target, i) => {
@@ -93,7 +126,7 @@ export function initMultiUI(getLanguage, notify) {
       .catch(error => notify(String(error), true)));
     controls.append(add, reset, run);
     const warning = document.createElement("p");
-    warning.textContent = t.safe;
+    warning.textContent = displayMode === "tabs" ? t.safeTabs : t.safe;
     const closeAll = document.createElement("button");
     closeAll.type = "button"; closeAll.textContent = t.closeAll;
     closeAll.addEventListener("click", () =>
@@ -132,9 +165,11 @@ export function initMultiUI(getLanguage, notify) {
     autoLabel.append(autoText, autoInput);
     section.append(controls, autoLabel, warning);
   }
-  browser.storage.local.get(["multiTargets", "multiAutoCloseSeconds"]).then(settings => {
+  browser.storage.local.get(["multiTargets", "multiAutoCloseSeconds", "multiDisplayMode"]).then(settings => {
     targets = normalizeMultiTargets(settings.multiTargets);
-    autoSeconds = normalizeAutoCloseSeconds(settings.multiAutoCloseSeconds); render();
+    autoSeconds = normalizeAutoCloseSeconds(settings.multiAutoCloseSeconds);
+    displayMode = normalizeMultiDisplayMode(settings.multiDisplayMode);
+    render();
   }).catch(error => notify(String(error), true));
   document.querySelectorAll("[data-lang]").forEach(button =>
     button.addEventListener("click", () => queueMicrotask(render)));
@@ -144,6 +179,9 @@ export function initMultiUI(getLanguage, notify) {
     if (changes.multiAutoCloseSeconds) {
       autoSeconds = normalizeAutoCloseSeconds(changes.multiAutoCloseSeconds.newValue);
     }
-    if (changes.multiTargets || changes.multiAutoCloseSeconds) render();
+    if (changes.multiDisplayMode) {
+      displayMode = normalizeMultiDisplayMode(changes.multiDisplayMode.newValue);
+    }
+    if (changes.multiTargets || changes.multiAutoCloseSeconds || changes.multiDisplayMode) render();
   });
 }
