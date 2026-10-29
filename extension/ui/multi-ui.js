@@ -1,10 +1,16 @@
 import { DEFAULT_MULTI_TARGETS, MAX_MULTI_TARGETS, normalizeMultiTargets,
-  normalizeMultiDisplayMode } from "../core/multi-search.js";
+  normalizeMultiDisplayMode, normalizeSplitPairs } from "../core/multi-search.js";
+import { SEARCH_HOST_ORIGINS } from "../core/search-hosts.js";
 import { MAX_AUTO_CLOSE_SECONDS, normalizeAutoCloseSeconds } from "../core/multi-sessions.js";
 const labels = {
   ru: { heading: "Мультипоиск", help: "F2 или значок возле выделенного текста. Сайты получают один и тот же запрос.",
     displayMode: "Как открывать поисковики", tiled: "Отдельные окна плиткой",
     tabbed: "Одно окно с вкладками",
+    split: "Разбивать вкладки на пары Split View",
+    splitSupport: "Firefox пока не позволяет аддонам автоматически включать Split View. Подготовим пары: выдели первую вкладку, затем Alt+клик по второй, аналогично для 3-й и 4-й.",
+    grantClose: "Разрешить кнопки «Закрыть все» на поисковиках",
+    grantSuccess: "Доступ разрешён. Новые поисковые окна будут показывать крестик.",
+    grantDenied: "Без доступа к поисковикам кнопка внутри их страниц может не появиться.",
     run: "Искать выделенное", add: "Добавить сайт", remove: "Удалить", reset: "Вернуть 4 поисковика",
     auto: "Автозакрытие через (секунд, 0 — выключено)", closeAll: "Закрыть все окна мультипоиска",
     badSeconds: "Введите целое число от 0 до 86400.",
@@ -13,6 +19,11 @@ const labels = {
   en: { heading: "Multi-search", help: "F2 or the icon beside selected text. Every selected site receives the query.",
     displayMode: "How to open search engines", tiled: "Separate tiled windows",
     tabbed: "One window with tabs",
+    split: "Pair tabs in Split View",
+    splitSupport: "Firefox doesn't yet let extensions create Split Views automatically. Tabs are prepared in pairs: select the first tab then Alt+click the second, and repeat for tabs 3 and 4.",
+    grantClose: "Enable Close all buttons on search engines",
+    grantSuccess: "Site access granted. New search pages can show the close button.",
+    grantDenied: "Without search-site access, the close button may not appear on those pages.",
     run: "Search selection", add: "Add website", remove: "Remove", reset: "Restore 4 defaults",
     auto: "Auto-close after (seconds; 0 = off)", closeAll: "Close all multi-search windows",
     badSeconds: "Enter a whole number from 0 to 86400.",
@@ -33,6 +44,7 @@ export function initMultiUI(getLanguage, notify) {
   let targets = normalizeMultiTargets(undefined);
   let autoSeconds = 0;
   let displayMode = "windows";
+  let splitPairs = false;
   let save = Promise.resolve();
   const txt = () => labels[getLanguage()] || labels.en;
   function store() {
@@ -73,6 +85,29 @@ export function initMultiUI(getLanguage, notify) {
       modeFieldset.append(label);
     }
     section.append(modeFieldset);
+    if (displayMode === "tabs") {
+      const splitLabel = document.createElement("label");
+      splitLabel.className = "multi-split";
+      const splitCheckbox = document.createElement("input");
+      splitCheckbox.type = "checkbox";
+      splitCheckbox.checked = splitPairs;
+      splitCheckbox.addEventListener("change", () => {
+        splitPairs = splitCheckbox.checked;
+        void browser.storage.local.set({ multiSplitPairs: splitPairs })
+          .catch(error => notify(String(error), true));
+        render();
+      });
+      const splitText = document.createElement("span");
+      splitText.textContent = t.split;
+      splitLabel.append(splitCheckbox, splitText);
+      section.append(splitLabel);
+      if (splitPairs && typeof browser.tabs?.createSplit !== "function") {
+        const splitHint = document.createElement("p");
+        splitHint.className = "multi-split-hint";
+        splitHint.textContent = t.splitSupport;
+        section.append(splitHint);
+      }
+    }
     const list = document.createElement("div");
     list.className = "multi-list";
     targets.forEach((target, i) => {
@@ -122,8 +157,12 @@ export function initMultiUI(getLanguage, notify) {
     const run = document.createElement("button");
     run.type = "button"; run.className = "multi-run"; run.textContent = t.run;
     run.addEventListener("click", () => browser.runtime.sendMessage({ action: "multiSearchActive" })
-      .then(result => { if (!result?.opened) notify(t.empty, true); })
-      .catch(error => notify(String(error), true)));
+      .then(result => {
+        if (!result?.opened) notify(t.empty, true);
+        else if (result.split?.requested && result.split.applied < result.split.requested) {
+          notify(t.splitSupport);
+        }
+      }).catch(error => notify(String(error), true)));
     controls.append(add, reset, run);
     const warning = document.createElement("p");
     warning.textContent = displayMode === "tabs" ? t.safeTabs : t.safe;
@@ -133,6 +172,16 @@ export function initMultiUI(getLanguage, notify) {
       browser.runtime.sendMessage({ action: "multiCloseAllManaged" })
         .catch(error => notify(String(error), true)));
     controls.append(closeAll);
+    const grant = document.createElement("button");
+    grant.type = "button";
+    grant.textContent = t.grantClose;
+    grant.addEventListener("click", () => {
+      // This request must happen directly in a real user gesture.
+      void browser.permissions.request({ origins: SEARCH_HOST_ORIGINS })
+        .then(allowed => notify(allowed ? t.grantSuccess : t.grantDenied, !allowed))
+        .catch(error => notify(String(error), true));
+    });
+    controls.append(grant);
     const autoLabel = document.createElement("label");
     autoLabel.className = "multi-auto";
     const autoText = document.createElement("span");
@@ -165,10 +214,11 @@ export function initMultiUI(getLanguage, notify) {
     autoLabel.append(autoText, autoInput);
     section.append(controls, autoLabel, warning);
   }
-  browser.storage.local.get(["multiTargets", "multiAutoCloseSeconds", "multiDisplayMode"]).then(settings => {
+  browser.storage.local.get(["multiTargets", "multiAutoCloseSeconds", "multiDisplayMode", "multiSplitPairs"]).then(settings => {
     targets = normalizeMultiTargets(settings.multiTargets);
     autoSeconds = normalizeAutoCloseSeconds(settings.multiAutoCloseSeconds);
     displayMode = normalizeMultiDisplayMode(settings.multiDisplayMode);
+    splitPairs = normalizeSplitPairs(settings.multiSplitPairs);
     render();
   }).catch(error => notify(String(error), true));
   document.querySelectorAll("[data-lang]").forEach(button =>
@@ -182,6 +232,8 @@ export function initMultiUI(getLanguage, notify) {
     if (changes.multiDisplayMode) {
       displayMode = normalizeMultiDisplayMode(changes.multiDisplayMode.newValue);
     }
-    if (changes.multiTargets || changes.multiAutoCloseSeconds || changes.multiDisplayMode) render();
+    if (changes.multiSplitPairs) splitPairs = normalizeSplitPairs(changes.multiSplitPairs.newValue);
+    if (changes.multiTargets || changes.multiAutoCloseSeconds ||
+        changes.multiDisplayMode || changes.multiSplitPairs) render();
   });
 }
