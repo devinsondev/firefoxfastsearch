@@ -1,3 +1,4 @@
+import { createCloseShortcutUI } from "./close-shortcut.js";
 import { DEFAULT_MULTI_TARGETS, MAX_MULTI_TARGETS, normalizeMultiTargets,
   normalizeMultiDisplayMode } from "../core/multi-search.js";
 import { SEARCH_HOST_ORIGINS } from "../core/search-hosts.js";
@@ -43,6 +44,7 @@ export function initMultiUI(getLanguage, notify) {
   let autoSeconds = 0;
   let displayMode = "windows";
   let save = Promise.resolve();
+  const closeShortcut = createCloseShortcutUI(browser, getLanguage, notify);
   const txt = () => labels[getLanguage()] || labels.en;
   function store() {
     const copy = targets.map(x => ({ ...x }));
@@ -182,7 +184,8 @@ export function initMultiUI(getLanguage, notify) {
       }
     });
     autoLabel.append(autoText, autoInput);
-    section.append(controls, autoLabel, warning);
+    closeShortcut.render();
+    section.append(controls, closeShortcut.container, autoLabel, warning);
   }
   browser.storage.local.get(["multiTargets", "multiAutoCloseSeconds", "multiDisplayMode"]).then(settings => {
     targets = normalizeMultiTargets(settings.multiTargets);
