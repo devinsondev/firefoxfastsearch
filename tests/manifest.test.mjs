@@ -12,7 +12,8 @@ test("preserves Firefox extension ID and F1 shortcut", () => {
 test("declares 16 profile commands and tiled multi-search", () => {
   assert.equal(Object.keys(manifest.commands).length, 17);
   assert.equal(manifest.commands["search-multi"].suggested_key.default, "F2");
-  assert.ok(manifest.permissions.includes("windows"));
+  assert.ok(manifest.permissions.includes("alarms"));
+  assert.ok(!manifest.permissions.includes("windows"));
   assert.equal(manifest.content_scripts[0].js[0], "content-multi.js");
 });
 test("localization keys match across Russian and English", () => {
