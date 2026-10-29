@@ -211,20 +211,24 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
       await registerMultiSession(api, session);
       // Keep a close button on the originating page, even if the search
       // provider doesn't grant access for content scripts.
-      await api.tabs.sendMessage(sourceTab.id, {
-        action: "multiSourceControl", session: {
-          id: session.id, expiresAt: session.expiresAt, language: session.language,
-        },
-      }).catch(() => {});
+      if (typeof api.tabs.sendMessage === "function") {
+        await api.tabs.sendMessage(sourceTab.id, {
+          action: "multiSourceControl", session: {
+            id: session.id, expiresAt: session.expiresAt, language: session.language,
+          },
+        }).catch(() => {});
+      }
       // Firefox does not always populate window.tabs in windows.create().
       // Look up tabs explicitly. If a content script is still loading, the
       // background's tabs.onUpdated listener will notify it on completion.
-      await Promise.allSettled(openedWindows.map(async window => {
-        const tabs = await api.tabs.query({ windowId: window.id });
-        await Promise.allSettled(tabs
-          .filter(tab => Number.isInteger(tab?.id))
-          .map(tab => api.tabs.sendMessage(tab.id, { action: "multiSessionReady" })));
-      }));
+      if (typeof api.tabs.sendMessage === "function") {
+        await Promise.allSettled(openedWindows.map(async window => {
+          const tabs = await api.tabs.query({ windowId: window.id });
+          await Promise.allSettled(tabs
+            .filter(tab => Number.isInteger(tab?.id))
+            .map(tab => api.tabs.sendMessage(tab.id, { action: "multiSessionReady" })));
+        }));
+      }
     } catch (error) {
       console.warn("Fast Search: could not register multi-search window group", error);
     }
