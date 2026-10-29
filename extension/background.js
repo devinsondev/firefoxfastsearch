@@ -46,3 +46,15 @@ browser.windows.onRemoved.addListener(windowId => {
   void forgetMultiWindow(browser, windowId).catch(error =>
     console.warn("Fast Search: multi-search cleanup failed", error));
 });
+
+// A search page can finish loading after its window is registered.
+// Notify the content script after navigation so the Close all button appears.
+browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status !== "complete" || !Number.isInteger(tab.windowId)) return;
+  void multiSessionForWindow(browser, tab.windowId)
+    .then(session => {
+      if (session) return browser.tabs.sendMessage(tabId, { action: "multiSessionReady" })
+        .catch(() => {});
+    })
+    .catch(error => console.warn("Fast Search: could not refresh close control", error));
+});
