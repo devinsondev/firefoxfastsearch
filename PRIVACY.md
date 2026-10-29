@@ -7,9 +7,9 @@
 
 ## English
 
-**What the extension accesses:** After the user presses one of the configured search shortcuts, the extension reads the selected text in the current webpage (including accessible frames or selected text fields) to build a search request. It does not read selections continuously.
+**What the extension accesses:** After the user presses one of the configured search shortcuts or clicks the selection icon, the extension reads the selected text in the current webpage (including accessible frames or selected text fields) to build a search request. The selection icon observes selection changes on normal webpages to offer a button. No selection text is sent to a provider until the user activates search.
 
-**Where data goes:** The selected text becomes a search query in the new tab's URL and is sent to the **search provider chosen by the user** (Google, DuckDuckGo, Yandex, Bing, or a user-configured HTTPS provider). Third-party providers may log, process, retain or share this query under their own policies. The browser may save the query URL in browsing history. Avoid selecting passwords, credentials, private messages, or other confidential data.
+**Where data goes:** The selected text becomes a search query in the new tab's or popup windows' URLs and is sent to the **search provider(s) chosen by the user** (Google, DuckDuckGo, Yandex, Bing, or a user-configured HTTPS provider). Multi-search sends the same query to **every enabled destination whose window opens**. Third-party providers may log, process, retain or share this query under their own policies. The browser may save the query URL in browsing history. Avoid selecting passwords, credentials, private messages, or other confidential data.
 
 **What stays local:** Search profiles, custom provider URL templates, foreground/background behavior and language settings are stored with Firefox's local extension storage. Shortcut mappings are managed by Firefox. The extension does not send these settings to the developer.
 
@@ -21,9 +21,9 @@
 
 ## Русский
 
-**Какие данные доступны:** Только после нажатия назначенной горячей клавиши расширение читает выделенный текст на текущей веб-странице (включая доступные фреймы и текстовые поля), чтобы сформировать поисковый запрос. Постоянного чтения выделений нет.
+**Какие данные доступны:** При выделении текста на обычных страницах расширение показывает значок; запрос отправляется только после нажатия значка или горячей клавиши. Расширение читает выделенный текст на текущей веб-странице (включая доступные фреймы и текстовые поля), чтобы сформировать поисковый запрос. Выделение отслеживается для отображения значка, но без отправки текста поисковикам до действия пользователя.
 
-**Куда отправляются данные:** Выделенный текст становится запросом в URL новой вкладки и передаётся **выбранному пользователем поисковику** (Google, DuckDuckGo, Yandex, Bing или своему HTTPS-поисковику). Сторонний сайт может обрабатывать, хранить и передавать запрос в соответствии со своей политикой. URL может попасть в историю Firefox. Не выделяйте пароли, токены, личные сообщения или другую конфиденциальную информацию.
+**Куда отправляются данные:** Выделенный текст становится запросом в URL новой вкладки или отдельных окон и передаётся **выбранным пользователем поисковикам** (Google, DuckDuckGo, Yandex, Bing или своему HTTPS-поисковику). При мультипоиске один запрос отправляется каждому открытому поисковику. Сторонний сайт может обрабатывать, хранить и передавать запрос в соответствии со своей политикой. URL может попасть в историю Firefox. Не выделяйте пароли, токены, личные сообщения или другую конфиденциальную информацию.
 
 **Что хранится локально:** Профили поиска, шаблоны пользовательских поисковиков, режимы вкладок и язык сохраняются в локальном хранилище Firefox. Привязками клавиш управляет Firefox. Эти настройки не отправляются разработчику.
 
