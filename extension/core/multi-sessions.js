@@ -1,5 +1,6 @@
 const STORAGE_KEY = "multiSearchSessions";
 export const ALARM_PREFIX = "fastsearch-close-";
+export const CLOSE_MULTI_COMMAND = "close-multi-search";
 export const MAX_AUTO_CLOSE_SECONDS = 86400; // 0 disables automatic closing.
 
 // Serialize local storage.session mutations so simultaneous batches do not overwrite each other.
