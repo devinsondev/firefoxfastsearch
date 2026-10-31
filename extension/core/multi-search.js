@@ -55,6 +55,28 @@ export function normalizedWorkArea(area) {
     [key, Math.round(area[key])]));
 }
 
+// Page screen dimensions can be privacy-spoofed or CSS-scaled, while the
+// browser.windows API uses its own window coordinate system. Prefer native
+// bounds when the source Firefox window fills the monitor; otherwise derive
+// its screen-space scale and origin from the SAME source window.
+export function calibratedWorkArea(pageArea, firefoxWindow, pageOuterBounds) {
+  const page = normalizedWorkArea(pageArea);
+  const native = normalizedWorkArea(firefoxWindow);
+  if (native && ["maximized", "fullscreen"].includes(firefoxWindow.state)) return native;
+  if (!page) return native;
+  const outer = normalizedWorkArea(pageOuterBounds);
+  if (!native || !outer) return page;
+  const scaleX = native.width / outer.width;
+  const scaleY = native.height / outer.height;
+  if (![scaleX, scaleY].every(scale => scale >= 0.5 && scale <= 3)) return page;
+  return normalizedWorkArea({
+    left: native.left + (page.left - outer.left) * scaleX,
+    top: native.top + (page.top - outer.top) * scaleY,
+    width: page.width * scaleX,
+    height: page.height * scaleY,
+  }) ?? page;
+}
+
 // Keep every tile the same size; center the last row instead of stretching its windows.
 export function tileWindows(area, requested, minWidth = MIN_WIDTH, minHeight = MIN_HEIGHT) {
   const work = normalizedWorkArea(area);
@@ -170,29 +192,48 @@ async function selectedContext(api, tab) {
     } catch { return null; }
   }
   const frames = results.map(item => item?.result).filter(item => item && typeof item.text === "string");
-  return frames.find(frame => frame.focused && frame.text.trim()) ||
-    frames.find(frame => frame.text.trim()) || null;
+  const selected = frames.find(frame => frame.focused && frame.text.trim()) ||
+    frames.find(frame => frame.text.trim());
+  if (!selected) return null;
+  // An iframe can have its own outerWidth. Use the top document for geometry.
+  const top = results.find(item => item.frameId === 0)?.result || frames[0];
+  return { ...selected,
+    screenBounds: top?.screenBounds ?? selected.screenBounds,
+    outerBounds: top?.outerBounds ?? selected.outerBounds };
+
 }
 
-export async function openMultiSearch(api, { tab, selectedText, screenBounds } = {}) {
+export async function openMultiSearch(api, { tab, selectedText, screenBounds, outerBounds } = {}) {
   const sourceTab = Number.isInteger(tab?.id) ? tab :
     (await api.tabs.query({ active: true, lastFocusedWindow: true }))[0];
   if (!Number.isInteger(sourceTab?.id)) return { opened: 0, requested: 0, reason: "noTab" };
 
   let text = typeof selectedText === "string" ? selectedText : "";
-  let area = normalizedWorkArea(screenBounds);
-  if (!text.trim() || !area) {
+  let pageArea = normalizedWorkArea(screenBounds);
+  let pageOuter = normalizedWorkArea(outerBounds);
+  if (!text.trim() || !pageArea || !pageOuter) {
     const context = await selectedContext(api, sourceTab);
     if (!text.trim()) text = context?.text || "";
-    if (!area) area = normalizedWorkArea(context?.screenBounds);
+    if (!pageArea) pageArea = normalizedWorkArea(context?.screenBounds);
+    if (!pageOuter) pageOuter = normalizedWorkArea(context?.outerBounds);
   }
   if (!text.trim()) return { opened: 0, requested: 0, reason: "noSelection" };
 
-  if (!area) {
-    try {
-      const windowInfo = await api.windows.get(sourceTab.windowId);
-      area = normalizedWorkArea(windowInfo);
-    } catch { /* Some window managers do not expose a work area. */ }
+  let firefoxWindow = null;
+  try {
+    if (Number.isInteger(sourceTab.windowId) && typeof api.windows?.get === "function") {
+      firefoxWindow = await api.windows.get(sourceTab.windowId);
+    }
+  } catch { /* Firefox may close the source window during selection. */ }
+  const area = calibratedWorkArea(pageArea, firefoxWindow, pageOuter);
+  if (pageArea && firefoxWindow && area) {
+    console.info("Fast Search: calibrated display", {
+      pageArea, pageOuter, sourceWindow: {
+        left: firefoxWindow.left, top: firefoxWindow.top,
+        width: firefoxWindow.width, height: firefoxWindow.height,
+        state: firefoxWindow.state,
+      }, workArea: area,
+    });
   }
   const settings = await api.storage.local.get([
     "multiTargets", "multiAutoCloseSeconds", "uiLanguage", "multiDisplayMode",

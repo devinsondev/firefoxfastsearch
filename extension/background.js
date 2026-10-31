@@ -21,7 +21,8 @@ void (async () => {
 browser.runtime.onMessage.addListener((message, sender) => {
   if (message?.action === "multiSearch" && Number.isInteger(sender.tab?.id)) {
     return openMultiSearch(browser, { tab: sender.tab,
-      selectedText: message.text, screenBounds: message.screenBounds });
+      selectedText: message.text, screenBounds: message.screenBounds,
+      outerBounds: message.outerBounds });
   }
   if (message?.action === "multiSearchActive") return openMultiSearch(browser);
   if (message?.action === "multiSessionInfo") {

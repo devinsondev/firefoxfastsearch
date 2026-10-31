@@ -28,7 +28,10 @@ document.addEventListener("mouseup", event => {
     e.preventDefault(); e.stopPropagation();
     const screenBounds = { left: screen.availLeft, top: screen.availTop,
       width: screen.availWidth, height: screen.availHeight };
-    browser.runtime.sendMessage({ action: "multiSearch", text: lastText, screenBounds })
+    const outerBounds = { left: window.screenX, top: window.screenY,
+      width: window.outerWidth, height: window.outerHeight };
+    browser.runtime.sendMessage({ action: "multiSearch", text: lastText,
+      screenBounds, outerBounds })
       .catch(error => console.warn("Fast Search:", error));
     removeMultiIcon();
   });
