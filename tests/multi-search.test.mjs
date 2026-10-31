@@ -120,9 +120,11 @@ test("reapplies the four exact screen quadrants after all windows are created", 
     alarms: { create: async () => {} },
   };
   assert.equal((await openMultiSearch(api)).opened, 4);
-  assert.equal(updated.length, 4);
-  assert.deepEqual(updated.map(({ left, top, width, height }) =>
-    ({ left, top, width, height })), tileWindows(area, 4));
+  assert.equal(updated.length, 8);
+  assert.deepEqual(updated.slice(0, 4).map(({ width, height }) =>
+    ({ width, height })), tileWindows(area, 4).map(({ width, height }) => ({ width, height })));
+  assert.deepEqual(updated.slice(4, 8).map(({ left, top }) =>
+    ({ left, top })), tileWindows(area, 4).map(({ left, top }) => ({ left, top })));
   assert.deepEqual(store.multiSearchSessions[0].windowIds, [101, 102, 103, 104]);
 });
 test("retries positioning when the window manager reports shifted bounds", async () => {
@@ -134,7 +136,53 @@ test("retries positioning when the window manager reports shifted bounds", async
       get: async id => ({ ...tile, left: id === 2 ? 20 : 0 }),
     },
   }, [{ windowId: 1, tile }, { windowId: 2, tile }]);
-  assert.deepEqual(updated, [1, 2, 2, 2]);
+  assert.deepEqual(updated, [1, 2, 1, 2, 2, 2]);
+});
+test("compensates for browser frame dimensions before moving the right tile", async () => {
+  const tile = { left: 1024, top: 615, width: 1024, height: 615 };
+  const calls = [], size = { left: 0, top: 0, width: 1120, height: 665 };
+  const api = { windows: {
+    update: async (id, details) => {
+      calls.push(details);
+      if (Number.isFinite(details.width)) size.width = details.width + 96;
+      if (Number.isFinite(details.height)) size.height = details.height + 50;
+      if (Number.isFinite(details.left)) {
+        size.left = Math.min(details.left, 2048 - size.width);
+      }
+      if (Number.isFinite(details.top)) size.top = Math.min(details.top, 1230 - size.height);
+    },
+    get: async () => ({ ...size }),
+  } };
+  const constrained = await settleTiledWindows(api, [{ windowId: 1, tile }]);
+  assert.deepEqual(constrained, []);
+  assert.deepEqual(size, tile);
+  assert.ok(calls.some(call => call.width === 928 && call.height === 565));
+  assert.ok(calls.some(call => call.left === 1024 && call.top === 615));
+  assert.ok(calls.every(call => !(Object.hasOwn(call, "left") &&
+    Object.hasOwn(call, "width"))), "resize and move must be separate updates");
+});
+test("reports a minimum window size that Firefox refuses to shrink", async () => {
+  const tile = { left: 1024, top: 0, width: 1024, height: 615 };
+  const actual = { left: 928, top: 0, width: 1120, height: 665 };
+  const api = { windows: {
+    update: async (id, details) => {
+      if (Number.isFinite(details.width)) actual.width = Math.max(1120, details.width);
+      if (Number.isFinite(details.height)) actual.height = Math.max(665, details.height);
+      if (Number.isFinite(details.left)) {
+        actual.left = Math.min(details.left, 2048 - actual.width);
+      }
+      if (Number.isFinite(details.top)) actual.top = details.top;
+    },
+    get: async () => ({ ...actual }),
+  } };
+  const oldWarn = console.warn;
+  console.warn = () => {};
+  let constrained;
+  try { constrained = await settleTiledWindows(api, [{ windowId: 1, tile }]); }
+  finally { console.warn = oldWarn; }
+  assert.equal(constrained.length, 1);
+  assert.equal(constrained[0].expected.width, 1024);
+  assert.equal(constrained[0].actual.width, 1120);
 });
 test("disabled auto-close never creates an alarm", async () => {
   const sessionStore = {}, alarms = [];

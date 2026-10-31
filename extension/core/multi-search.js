@@ -87,30 +87,73 @@ export function tileWindows(area, requested, minWidth = MIN_WIDTH, minHeight = M
   return tiles;
 }
 
-// Creating several Firefox windows at once can leave their final bounds shifted.
-// Reapply the entire grid only after all windows have been created.
+// Resize and move separately: on Windows, a combined update may clamp the
+// position against the OLD window size before applying the new dimensions.
 export async function settleTiledWindows(api, entries) {
-  if (typeof api.windows.update !== "function") return;
-  const place = async ({ windowId, tile }) => {
-    try { await api.windows.update(windowId, tile); }
-    catch (error) { console.warn("Fast Search: could not align search window", error); }
+  if (typeof api.windows.update !== "function") return [];
+  const requested = new Map(entries.map(({ windowId, tile }) => [
+    windowId, { width: tile.width, height: tile.height },
+  ]));
+  const update = async (id, bounds) => {
+    try { await api.windows.update(id, bounds); return true; }
+    catch (error) {
+      console.warn("Fast Search: could not resize or move search window", id, error);
+      return false;
+    }
   };
-  // Firefox can asynchronously resize and recenter popup windows during first paint.
-  // Two delayed placement passes run after its initial window-manager adjustments.
-  for (const entry of entries) await place(entry);
-  if (typeof api.windows.get !== "function") return;
+  // Give the OS a chance to apply each size before positioning anything.
+  for (const { windowId, tile } of entries) {
+    await update(windowId, { width: tile.width, height: tile.height });
+  }
+  for (const { windowId, tile } of entries) {
+    await update(windowId, { left: tile.left, top: tile.top });
+  }
+  if (typeof api.windows.get !== "function") return [];
+  // Some Firefox versions add non-client dimensions after creation. Measure
+  // outer bounds and compensate for the observed difference, not just retry.
   for (const pause of [250, 750]) {
     await new Promise(resolve => setTimeout(resolve, pause));
-    for (const entry of entries) {
+    for (const { windowId, tile } of entries) {
       try {
-        const actual = await api.windows.get(entry.windowId);
-        if (["left", "top", "width", "height"].some(key =>
-          Number.isFinite(actual[key]) && Math.abs(actual[key] - entry.tile[key]) > 2)) {
-          await place(entry);
+        const actual = await api.windows.get(windowId);
+        const previous = requested.get(windowId);
+        const dimensions = { ...previous };
+        for (const axis of ["width", "height"]) {
+          if (!Number.isFinite(actual[axis])) continue;
+          const difference = tile[axis] - actual[axis];
+          if (Math.abs(difference) > 2) {
+            const floor = axis === "width" ? 200 : 150;
+            dimensions[axis] = Math.max(floor, previous[axis] + difference);
+          }
+        }
+        if (dimensions.width !== previous.width || dimensions.height !== previous.height) {
+          requested.set(windowId, dimensions);
+          await update(windowId, dimensions);
+        }
+        if (dimensions.width !== previous.width || dimensions.height !== previous.height ||
+            Math.abs(actual.left - tile.left) > 2 || Math.abs(actual.top - tile.top) > 2) {
+          await update(windowId, { left: tile.left, top: tile.top });
         }
       } catch { /* The user may have closed a window during placement. */ }
     }
   }
+  const constrained = [];
+  for (const { windowId, tile } of entries) {
+    try {
+      const actual = await api.windows.get(windowId);
+      if (["left", "top", "width", "height"].some(key =>
+        Number.isFinite(actual[key]) && Math.abs(actual[key] - tile[key]) > 3)) {
+        constrained.push({ windowId, expected: tile, actual: {
+          left: actual.left, top: actual.top,
+          width: actual.width, height: actual.height,
+        } });
+      }
+    } catch { /* The window has been closed. */ }
+  }
+  if (constrained.length) {
+    console.warn("Fast Search: Firefox/Windows did not accept these tile bounds", constrained);
+  }
+  return constrained;
 }
 
 async function selectedContext(api, tab) {
@@ -161,6 +204,7 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
   let openedWindows = [];
   let failed = 0;
   let skipped = 0;
+  let constrained = 0;
   if (mode === "tabs") {
     // One normal Firefox window: one genuine search website per browser tab.
     // A popup type would hide browser chrome, including the tab strip.
@@ -196,8 +240,8 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
       }
     }
     openedWindows = placed.map(item => item.window);
-    await settleTiledWindows(api, placed.map(({ window, tile }) =>
-      ({ windowId: window.id, tile })));
+    constrained = (await settleTiledWindows(api, placed.map(({ window, tile }) =>
+      ({ windowId: window.id, tile })))).length;
   }
 
   if (openedWindows.length) {
@@ -238,5 +282,5 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
 
   return { opened: openedWindows.length, requested: targets.length,
     mode, tabs: mode === "tabs" && openedWindows.length ? targets.length : 0,
-    failed, skipped };
+    failed, skipped, constrained };
 }
