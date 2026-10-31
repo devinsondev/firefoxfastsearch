@@ -43,16 +43,26 @@ Temporary add-ons disappear when Firefox restarts. To publish permanently, submi
 
 ## Package for Mozilla Add-ons (AMO)
 
-From the repository root, run in **PowerShell**:
+From the repository root in **Windows PowerShell** (Python is not required):
 
 ```powershell
-py -3 .\\scripts\\package.py
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package.ps1
 ```
 
-Alternatively, run `python scripts/package.py` if Python is available under that name.
-Upload `dist/firefoxfastsearch-<version>.zip` to AMO. The script writes ZIP entries with forward slashes, checks integrity, and ensures `manifest.json` is at the archive root.
+Or use the cross-platform Python builder:
 
-**Avoid PowerShell `Compress-Archive` for AMO:** on Windows it can create ZIP entries such as `core\\command-router.js`, which AMO rejects as an invalid filename. Python is needed only when building the ZIP, not when using the add-on.
+```powershell
+py -3 .\scripts\package.py
+py -3 .\scripts\verify_package.py
+```
+
+**Upload `dist/firefoxfastsearch-1.5.3.zip`**, not a stale 1.5.2 ZIP or a zipped GitHub Actions artifact wrapper.
+Both builders use forward-slash ZIP entry names (e.g. `core/command-router.js`),
+place `manifest.json` at the archive root, and reject invalid ZIP structure.
+GitHub Actions builds and checks the ZIP independently on Linux and Windows.
+
+**Do not use `Compress-Archive` for AMO builds on Windows.** It may produce
+backslash entry names such as `core\command-router.js`, which Mozilla rejects.
 
 ## Optional developer checks
 
