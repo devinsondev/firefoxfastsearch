@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
   "description": "__MSG_extensionDescription__",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {
@@ -14,6 +14,9 @@
           "websiteContent"
         ]
       }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
     }
   },
   "permissions": [
@@ -34,11 +37,7 @@
     "default_popup": "popup.html"
   },
   "icons": {
-    "16": "icons/icon.png",
-    "32": "icons/icon.png",
-    "48": "icons/icon.png",
-    "96": "icons/icon.png",
-    "128": "icons/icon.png"
+    "256": "icons/icon.png"
   },
   "options_ui": {
     "page": "options.html",

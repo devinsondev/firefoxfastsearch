@@ -2,7 +2,7 @@
 
 Search selected webpage text with a hotkey. Results open in a new active/background tab, a tiled grid of popup windows, or **one separate Firefox window containing a tab per search engine**.
 
-**Languages:** English and Russian, switchable in both settings views. **Firefox:** desktop 140 or newer.
+**Languages:** English and Russian, switchable in both settings views. **Firefox:** desktop 140 or newer; Android 142 or newer if explicitly enabled for distribution.
 
 ## Features
 
@@ -20,7 +20,7 @@ Search selected webpage text with a hotkey. Results open in a new active/backgro
 - **Tiled mode only:** windows share the available screen work area, with at most as many windows as can fit the minimum size. Tabbed mode opens all configured sites (up to 16) regardless of screen space. For more tiled windows use a larger monitor; small screens intentionally skip excess sites. Browser window managers may enforce their own positioning or minimum sizes.
 - **+** adds a profile tab with its own shortcut, search provider, and tab mode (up to 16 independent profiles).
 - Search providers: Google, DuckDuckGo, Yandex, Bing, or a user-defined HTTPS URL with `{query}` placeholder.
-- **Fixed official icon:** user-uploaded toolbar icons are not supported. This reduces the ability to misrepresent the official add-on with offensive or misleading imagery.
+- **Fixed official icon:** user-uploaded toolbar icons are not supported. The packaged 256×256 PNG is declared at its actual size in the manifest and Firefox scales it for the toolbar; this also avoids AMO icon-size mismatch warnings.
 - Keyboard shortcuts are subject to Firefox / OS restrictions; some combinations are reserved.
 - No advertising analytics, no developer-controlled search server, and no background tracking.
 
@@ -30,7 +30,7 @@ Pressing a shortcut or clicking the on-page multi-search icon reads selected tex
 
 The extension keeps search profiles and language settings locally. Firefox manages shortcut assignments. It does not send collected queries to developer-operated servers. See [PRIVACY.md](PRIVACY.md) and [DISCLAIMER.md](DISCLAIMER.md) (English and Russian) and the built-in **Privacy & Legal** page in Settings. The project is independent of Mozilla and search providers.
 
-Firefox 140+ is required for Mozilla's built-in data transmission consent. The manifest declares required `searchTerms` and `websiteContent` because selected webpage text is sent to the chosen search provider as a search query. This declaration is **not** a claim that the developer collects queries on their own servers.
+Firefox desktop 140+ and Firefox for Android 142+ are required for Mozilla's built-in data transmission consent. The manifest sets separate minimum versions via `gecko` and `gecko_android`. The AMO listing targets desktop Firefox; enabling Android distribution would require separate functional testing. The manifest declares required `searchTerms` and `websiteContent` because selected webpage text is sent to the chosen search provider as a search query. This declaration is **not** a claim that the developer collects queries on their own servers.
 
 ## Install for testing (temporary / unsigned)
 
@@ -56,7 +56,7 @@ py -3 .\scripts\package.py
 py -3 .\scripts\verify_package.py
 ```
 
-**Upload `dist/firefoxfastsearch-1.5.3.zip`**, not a stale 1.5.2 ZIP or a zipped GitHub Actions artifact wrapper.
+**Upload `dist/firefoxfastsearch-1.5.4.zip`**, not a stale 1.5.2 ZIP or a zipped GitHub Actions artifact wrapper.
 Both builders use forward-slash ZIP entry names (e.g. `core/command-router.js`),
 place `manifest.json` at the archive root, and reject invalid ZIP structure.
 GitHub Actions builds and checks the ZIP independently on Linux and Windows.

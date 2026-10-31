@@ -28,12 +28,17 @@ test("all settings labels have translations", () => {
 });
 test("icons are referenced by the manifest", () => {
   assert.equal(manifest.action.default_icon, "icons/icon.png");
-  assert.equal(manifest.icons["128"], "icons/icon.png");
+  assert.deepEqual(manifest.icons, { "256": "icons/icon.png" });
+  const png = readFileSync(new URL(manifest.icons["256"], extension));
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(png.readUInt32BE(16), 256);
+  assert.equal(png.readUInt32BE(20), 256);
 });
 
 test("data transmission is disclosed with built-in Firefox consent", () => {
   const gecko = manifest.browser_specific_settings.gecko;
-  assert.ok(parseInt(gecko.strict_min_version, 10) >= 140);
+  assert.equal(gecko.strict_min_version, "140.0");
+  assert.equal(manifest.browser_specific_settings.gecko_android.strict_min_version, "142.0");
   assert.deepEqual(gecko.data_collection_permissions.required.sort(),
     ["searchTerms", "websiteContent"].sort());
 });
