@@ -79,6 +79,15 @@ test("popup reuses the full-page profile controller", () => {
   assert.match(popup, /href="legal\.html"/);
   assert.doesNotMatch(popup, /(?:src|href)="https?:\/\//);
 });
+test("search-window Close all overlay has a persistent optional toggle", () => {
+  const ui = readFileSync(new URL("ui/multi-ui.js", extension), "utf8");
+  const script = readFileSync(new URL("content-multi.js", extension), "utf8");
+  assert.match(ui, /multiShowCloseButtons/);
+  assert.match(script, /multiShowCloseButtons/);
+  assert.match(script, /sourceControl/);
+  const background = readFileSync(new URL("background.js", extension), "utf8");
+  assert.match(background, /import \{ openMultiSearch \} from "\.\/core\/multi-search\.js"/);
+});
 test("popup labels are localized in both languages", () => {
   const popup = readFileSync(new URL("popup.html", extension), "utf8");
   const matches = [...popup.matchAll(/data-i18n(?:-placeholder|-title)?="(\w+)"/g)];

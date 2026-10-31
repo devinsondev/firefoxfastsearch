@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeMultiTargets, normalizeMultiDisplayMode,
-  tabbedWindowBounds, tileWindows, openMultiSearch
+  tabbedWindowBounds, tileWindows, settleTiledWindows, openMultiSearch
 } from "../extension/core/multi-search.js";
 
 test("first launch defaults to four providers", () => {
@@ -40,6 +40,14 @@ test("uses nonzero screen offsets and no overlap for 5 windows", () => {
     assert.ok(a.left + a.width <= b.left || b.left + b.width <= a.left ||
       a.top + a.height <= b.top || b.top + b.height <= a.top);
   }
+});
+test("five windows have uniform sizes and a centered final row", () => {
+  const tiles = tileWindows({ left: 0, top: 0, width: 1800, height: 1000 }, 5);
+  assert.equal(tiles.length, 5);
+  assert.deepEqual(tiles.map(tile => [tile.width, tile.height]),
+    Array.from({ length: 5 }, () => [600, 500]));
+  assert.deepEqual(tiles.map(tile => [tile.left, tile.top]),
+    [[0, 0], [600, 0], [1200, 0], [300, 500], [900, 500]]);
 });
 test("does not open more windows than comfortably fit", () => {
   const tiles = tileWindows({ left: 0, top: 0, width: 1200, height: 800 }, 16);
@@ -82,6 +90,51 @@ test("four windows launch concurrently and auto-close uses user-supplied seconds
   assert.ok(alarms[0].info.when <= Date.now() + 12000);
   assert.equal(sessionStore.multiSearchSessions[0].windowIds.length, 4);
   assert.equal(sessionStore.multiSearchSessions[0].language, "ru");
+});
+test("reapplies the four exact screen quadrants after all windows are created", async () => {
+  const area = { left: 0, top: 0, width: 1600, height: 960 };
+  const created = [], updated = [], store = {};
+  const api = {
+    tabs: {
+      query: async options => options?.windowId ? [] : [{ id: 20, windowId: 10 }],
+      sendMessage: async () => {},
+    },
+    scripting: { executeScript: async () => [{ result: { focused: true, text: "test",
+      screenBounds: area } }] },
+    storage: {
+      local: { get: async () => ({}) },
+      session: { get: async key => ({ [key]: store[key] }),
+        set: async value => Object.assign(store, value) },
+    },
+    windows: {
+      create: async details => {
+        const index = created.push(details);
+        return { id: 100 + index, left: 200, top: 200, width: 600, height: 400 };
+      },
+      update: async (id, bounds) => {
+        updated.push({ id, ...bounds });
+        return { id, ...bounds };
+      },
+      get: async id => updated.findLast(item => item.id === id),
+    },
+    alarms: { create: async () => {} },
+  };
+  assert.equal((await openMultiSearch(api)).opened, 4);
+  assert.equal(updated.length, 4);
+  assert.deepEqual(updated.map(({ left, top, width, height }) =>
+    ({ left, top, width, height })), tileWindows(area, 4));
+  assert.deepEqual(store.multiSearchSessions[0].windowIds, [101, 102, 103, 104]);
+});
+test("retries positioning when the window manager reports shifted bounds", async () => {
+  const tile = { left: 0, top: 0, width: 800, height: 480 };
+  const updated = [];
+  await settleTiledWindows({
+    windows: {
+      update: async id => { updated.push(id); },
+      get: async id => ({ ...tile, left: id === 2 ? 20 : 0 }),
+    },
+  }, [{ windowId: 1, tile }, { windowId: 2, tile }]);
+  assert.deepEqual(updated, [1, 2, 2]);
 });
 test("disabled auto-close never creates an alarm", async () => {
   const sessionStore = {}, alarms = [];

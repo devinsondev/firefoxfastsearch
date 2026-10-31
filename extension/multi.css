@@ -34,3 +34,8 @@
 .multi-shortcut-record kbd{background:var(--surface2);padding:4px 6px;
   border:1px solid var(--line);border-radius:5px;font:600 11px monospace}
 .multi-shortcut-controls button:disabled{opacity:.45}
+
+.multi-close-toggle{display:flex;align-items:center;gap:9px;padding:9px 10px;
+  margin-top:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface2);
+  cursor:pointer;color:var(--text);font-size:12px}
+.multi-close-toggle input{flex:none;margin:0;accent-color:var(--accent)}

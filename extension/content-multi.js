@@ -43,13 +43,28 @@ window.addEventListener("scroll", removeMultiIcon, true);
 let closeAllHost = null;
 let managedSessionId = null;
 let autoCloseTimer = null;
+let sourceControl = false;
+let showCloseButtons = true;
+
+function clearMultiClose() {
+  closeAllHost?.remove();
+  closeAllHost = null;
+  managedSessionId = null;
+  sourceControl = false;
+  if (autoCloseTimer !== null) clearTimeout(autoCloseTimer);
+  autoCloseTimer = null;
+}
 
 // Render inside shadow DOM to isolate the control from search websites' styles.
-function displayMultiClose(session) {
-  if (!session?.id || managedSessionId === session.id) return;
-  closeAllHost?.remove();
-  if (autoCloseTimer !== null) clearTimeout(autoCloseTimer);
+function displayMultiClose(session, isSource = false) {
+  if (!session?.id) return;
+  if (managedSessionId === session.id) {
+    if (isSource) sourceControl = true;
+    return;
+  }
+  clearMultiClose();
   managedSessionId = session.id;
+  sourceControl = isSource;
   const russian = session.language === "ru";
   const host = document.createElement("div");
   host.style.cssText = "position:fixed!important;top:8px!important;left:50%!important;" +
@@ -89,19 +104,27 @@ function displayMultiClose(session) {
 
 async function refreshMultiClose() {
   try {
+    const settings = await browser.storage.local.get("multiShowCloseButtons");
+    showCloseButtons = settings.multiShowCloseButtons !== false;
+    if (!showCloseButtons) {
+      if (!sourceControl) clearMultiClose();
+      return;
+    }
     const session = await browser.runtime.sendMessage({ action: "multiSessionInfo" });
-    if (session) displayMultiClose(session);
+    if (showCloseButtons && session) displayMultiClose(session);
   } catch { /* The extension may be reloading or this page may be restricted. */ }
 }
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes.multiShowCloseButtons) return;
+  showCloseButtons = changes.multiShowCloseButtons.newValue !== false;
+  if (showCloseButtons) void refreshMultiClose();
+  else if (!sourceControl) clearMultiClose();
+});
 browser.runtime.onMessage.addListener(message => {
   if (message?.action === "multiSessionReady") void refreshMultiClose();
-  if (message?.action === "multiSourceControl") displayMultiClose(message.session);
+  if (message?.action === "multiSourceControl") displayMultiClose(message.session, true);
   if (message?.action === "multiSessionClosed" && managedSessionId === message.id) {
-    closeAllHost?.remove();
-    closeAllHost = null;
-    managedSessionId = null;
-    if (autoCloseTimer !== null) clearTimeout(autoCloseTimer);
-    autoCloseTimer = null;
+    clearMultiClose();
   }
 });
 // Covers navigation and fast-loading pages that finish before a batch is registered.

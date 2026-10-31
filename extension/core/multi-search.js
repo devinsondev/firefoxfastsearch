@@ -55,7 +55,7 @@ export function normalizedWorkArea(area) {
     [key, Math.round(area[key])]));
 }
 
-// Pick a grid with readable cells. The final row expands to use the full screen.
+// Keep every tile the same size; center the last row instead of stretching its windows.
 export function tileWindows(area, requested, minWidth = MIN_WIDTH, minHeight = MIN_HEIGHT) {
   const work = normalizedWorkArea(area);
   if (!work || !Number.isInteger(requested) || requested < 0) return [];
@@ -75,15 +75,39 @@ export function tileWindows(area, requested, minWidth = MIN_WIDTH, minHeight = M
   const tiles = [];
   for (let row = 0, index = 0; row < best.rows; row++) {
     const inRow = Math.min(best.columns, count - index);
+    const offset = (best.columns - inRow) / 2;
     const top = work.top + Math.floor(work.height * row / best.rows);
     const bottom = work.top + Math.floor(work.height * (row + 1) / best.rows);
     for (let column = 0; column < inRow; column++, index++) {
-      const left = work.left + Math.floor(work.width * column / inRow);
-      const right = work.left + Math.floor(work.width * (column + 1) / inRow);
+      const left = work.left + Math.floor(work.width * (column + offset) / best.columns);
+      const right = work.left + Math.floor(work.width * (column + offset + 1) / best.columns);
       tiles.push({ left, top, width: right - left, height: bottom - top });
     }
   }
   return tiles;
+}
+
+// Creating several Firefox windows at once can leave their final bounds shifted.
+// Reapply the entire grid only after all windows have been created.
+export async function settleTiledWindows(api, entries) {
+  if (typeof api.windows.update !== "function") return;
+  const place = async ({ windowId, tile }) => {
+    try { await api.windows.update(windowId, tile); }
+    catch (error) { console.warn("Fast Search: could not align search window", error); }
+  };
+  // Sequential updates avoid competing window-manager resize/move operations.
+  for (const entry of entries) await place(entry);
+  if (typeof api.windows.get !== "function") return;
+  // Some window managers apply a late correction; retry mispositioned windows once.
+  for (const entry of entries) {
+    try {
+      const actual = await api.windows.get(entry.windowId);
+      if (["left", "top", "width", "height"].some(key =>
+        Number.isFinite(actual[key]) && Math.abs(actual[key] - entry.tile[key]) > 2)) {
+        await place(entry);
+      }
+    } catch { /* The window may have been closed during placement. */ }
+  }
 }
 
 async function selectedContext(api, tab) {
@@ -156,9 +180,13 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
     // Start every browser window immediately; do not wait for previous windows to load.
     const results = await Promise.allSettled(tiles.map((tile, index) =>
       api.windows.create({ url: buildSearchUrl(targets[index], text), type: "popup", ...tile })));
-    openedWindows = results.filter(result => result.status === "fulfilled" &&
-      Number.isInteger(result.value?.id)).map(result => result.value);
+    const placed = results.flatMap((result, index) =>
+      result.status === "fulfilled" && Number.isInteger(result.value?.id)
+        ? [{ window: result.value, tile: tiles[index] }] : []);
+    openedWindows = placed.map(item => item.window);
     failed = results.length - openedWindows.length;
+    await settleTiledWindows(api, placed.map(({ window, tile }) =>
+      ({ windowId: window.id, tile })));
   }
 
   if (openedWindows.length) {

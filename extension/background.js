@@ -1,4 +1,5 @@
 import { runSearchCommand } from "./core/command-router.js";
+import { openMultiSearch } from "./core/multi-search.js";
 import { ALARM_PREFIX, closeAllMultiSessions, closeMultiSession,
   forgetMultiWindow, multiSessionForWindow } from "./core/multi-sessions.js";
 
