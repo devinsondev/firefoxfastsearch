@@ -41,15 +41,18 @@ Firefox 140+ is required for Mozilla's built-in data transmission consent. The m
 
 Temporary add-ons disappear when Firefox restarts. To publish permanently, submit the built extension ZIP to Mozilla Add-ons for signing and review. Existing saved profiles and shortcuts are retained when upgrading the extension under the same ID: `firefoxfastsearch@devinsondev`. Version 1.2+ deletes any icon override previously saved by version 1.1. Firefox 139 and older are no longer supported.
 
-## Package without npm
+## Package for Mozilla Add-ons (AMO)
 
-Run this in **PowerShell**, at the repository root:
+From the repository root, run in **PowerShell**:
 
 ```powershell
-Compress-Archive -Path .\extension\* -DestinationPath .\firefoxfastsearch-1.5.2.zip -Force
+py -3 .\\scripts\\package.py
 ```
 
-The ZIP must contain `manifest.json` at the archive root. You can alternatively run `python scripts/package.py` for a deterministic, extension-only ZIP in `dist/`. Neither npm nor Python is required **to use** the add-on.
+Alternatively, run `python scripts/package.py` if Python is available under that name.
+Upload `dist/firefoxfastsearch-<version>.zip` to AMO. The script writes ZIP entries with forward slashes, checks integrity, and ensures `manifest.json` is at the archive root.
+
+**Avoid PowerShell `Compress-Archive` for AMO:** on Windows it can create ZIP entries such as `core\\command-router.js`, which AMO rejects as an invalid filename. Python is needed only when building the ZIP, not when using the add-on.
 
 ## Optional developer checks
 
