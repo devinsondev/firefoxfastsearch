@@ -53,7 +53,7 @@ test("does not open more windows than comfortably fit", () => {
   const tiles = tileWindows({ left: 0, top: 0, width: 1200, height: 800 }, 16);
   assert.ok(tiles.length <= 4);
 });
-test("four windows launch concurrently and auto-close uses user-supplied seconds", async () => {
+test("four windows launch in order and auto-close uses user-supplied seconds", async () => {
   const created = [], messages = [], alarms = [], sessionStore = {};
   let active = 0, peak = 0;
   const api = {
@@ -80,7 +80,7 @@ test("four windows launch concurrently and auto-close uses user-supplied seconds
   const startTime = Date.now();
   const result = await openMultiSearch(api);
   assert.equal(result.opened, 4);
-  assert.equal(peak, 4, "all window creations should begin before any finishes");
+  assert.equal(peak, 1, "window creation must not race against other popup placements");
   assert.equal(new Set(created.map(x => new URL(x.url).hostname)).size, 4);
   assert.ok(created.every(x => x.type === "popup"));
   assert.equal(messages.length, 5);
@@ -134,7 +134,7 @@ test("retries positioning when the window manager reports shifted bounds", async
       get: async id => ({ ...tile, left: id === 2 ? 20 : 0 }),
     },
   }, [{ windowId: 1, tile }, { windowId: 2, tile }]);
-  assert.deepEqual(updated, [1, 2, 2]);
+  assert.deepEqual(updated, [1, 2, 2, 2]);
 });
 test("disabled auto-close never creates an alarm", async () => {
   const sessionStore = {}, alarms = [];

@@ -95,18 +95,21 @@ export async function settleTiledWindows(api, entries) {
     try { await api.windows.update(windowId, tile); }
     catch (error) { console.warn("Fast Search: could not align search window", error); }
   };
-  // Sequential updates avoid competing window-manager resize/move operations.
+  // Firefox can asynchronously resize and recenter popup windows during first paint.
+  // Two delayed placement passes run after its initial window-manager adjustments.
   for (const entry of entries) await place(entry);
   if (typeof api.windows.get !== "function") return;
-  // Some window managers apply a late correction; retry mispositioned windows once.
-  for (const entry of entries) {
-    try {
-      const actual = await api.windows.get(entry.windowId);
-      if (["left", "top", "width", "height"].some(key =>
-        Number.isFinite(actual[key]) && Math.abs(actual[key] - entry.tile[key]) > 2)) {
-        await place(entry);
-      }
-    } catch { /* The window may have been closed during placement. */ }
+  for (const pause of [250, 750]) {
+    await new Promise(resolve => setTimeout(resolve, pause));
+    for (const entry of entries) {
+      try {
+        const actual = await api.windows.get(entry.windowId);
+        if (["left", "top", "width", "height"].some(key =>
+          Number.isFinite(actual[key]) && Math.abs(actual[key] - entry.tile[key]) > 2)) {
+          await place(entry);
+        }
+      } catch { /* The user may have closed a window during placement. */ }
+    }
   }
 }
 
@@ -177,14 +180,22 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
     if (!area) return { opened: 0, requested: targets.length, mode, reason: "noScreen" };
     const tiles = tileWindows(area, targets.length);
     skipped = targets.length - tiles.length;
-    // Start every browser window immediately; do not wait for previous windows to load.
-    const results = await Promise.allSettled(tiles.map((tile, index) =>
-      api.windows.create({ url: buildSearchUrl(targets[index], text), type: "popup", ...tile })));
-    const placed = results.flatMap((result, index) =>
-      result.status === "fulfilled" && Number.isInteger(result.value?.id)
-        ? [{ window: result.value, tile: tiles[index] }] : []);
+    // Sequential creation prevents Firefox/Windows from overriding earlier popup
+    // geometry while several new windows initialize at the same instant.
+    const placed = [];
+    for (const [index, tile] of tiles.entries()) {
+      try {
+        const window = await api.windows.create({
+          url: buildSearchUrl(targets[index], text), type: "popup", ...tile,
+        });
+        if (Number.isInteger(window?.id)) placed.push({ window, tile });
+        else failed++;
+      } catch (error) {
+        failed++;
+        console.warn("Fast Search: could not create tiled window", error);
+      }
+    }
     openedWindows = placed.map(item => item.window);
-    failed = results.length - openedWindows.length;
     await settleTiledWindows(api, placed.map(({ window, tile }) =>
       ({ windowId: window.id, tile })));
   }
