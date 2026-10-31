@@ -8,6 +8,7 @@ const labels = {
     displayMode: "Как открывать поисковики", tiled: "Отдельные окна плиткой",
     tabbed: "Одно окно с вкладками",
 
+    toggleClose: "Показывать кнопку «Закрыть все» внутри окон поиска",
     grantClose: "Разрешить кнопки «Закрыть все» на поисковиках",
     grantSuccess: "Доступ разрешён. Новые поисковые окна будут показывать крестик.",
     grantDenied: "Без доступа к поисковикам кнопка внутри их страниц может не появиться.",
@@ -20,6 +21,7 @@ const labels = {
     displayMode: "How to open search engines", tiled: "Separate tiled windows",
     tabbed: "One window with tabs",
 
+    toggleClose: "Show Close all button inside search windows",
     grantClose: "Enable Close all buttons on search engines",
     grantSuccess: "Site access granted. New search pages can show the close button.",
     grantDenied: "Without search-site access, the close button may not appear on those pages.",
@@ -43,6 +45,7 @@ export function initMultiUI(getLanguage, notify) {
   let targets = normalizeMultiTargets(undefined);
   let autoSeconds = 0;
   let displayMode = "windows";
+  let showCloseButtons = true;
   let save = Promise.resolve();
   const closeShortcut = createCloseShortcutUI(browser, getLanguage, notify);
   const txt = () => labels[getLanguage()] || labels.en;
@@ -144,9 +147,24 @@ export function initMultiUI(getLanguage, notify) {
       browser.runtime.sendMessage({ action: "multiCloseAllManaged" })
         .catch(error => notify(String(error), true)));
     controls.append(closeAll);
+    const closeToggle = document.createElement("label");
+    closeToggle.className = "multi-close-toggle";
+    const closeCheckbox = document.createElement("input");
+    closeCheckbox.type = "checkbox";
+    closeCheckbox.checked = showCloseButtons;
+    const closeCaption = document.createElement("span");
+    closeCaption.textContent = t.toggleClose;
+    closeToggle.append(closeCheckbox, closeCaption);
     const grant = document.createElement("button");
     grant.type = "button";
     grant.textContent = t.grantClose;
+    grant.disabled = !showCloseButtons;
+    closeCheckbox.addEventListener("change", () => {
+      showCloseButtons = closeCheckbox.checked;
+      grant.disabled = !showCloseButtons;
+      void browser.storage.local.set({ multiShowCloseButtons: showCloseButtons })
+        .catch(error => notify(String(error), true));
+    });
     grant.addEventListener("click", () => {
       // This request must happen directly in a real user gesture.
       void browser.permissions.request({ origins: SEARCH_HOST_ORIGINS })
@@ -185,12 +203,14 @@ export function initMultiUI(getLanguage, notify) {
     });
     autoLabel.append(autoText, autoInput);
     closeShortcut.render();
-    section.append(controls, closeShortcut.container, autoLabel, warning);
+    section.append(controls, closeToggle, closeShortcut.container, autoLabel, warning);
   }
-  browser.storage.local.get(["multiTargets", "multiAutoCloseSeconds", "multiDisplayMode"]).then(settings => {
+  browser.storage.local.get(["multiTargets", "multiAutoCloseSeconds", "multiDisplayMode",
+    "multiShowCloseButtons"]).then(settings => {
     targets = normalizeMultiTargets(settings.multiTargets);
     autoSeconds = normalizeAutoCloseSeconds(settings.multiAutoCloseSeconds);
     displayMode = normalizeMultiDisplayMode(settings.multiDisplayMode);
+    showCloseButtons = settings.multiShowCloseButtons !== false;
     render();
   }).catch(error => notify(String(error), true));
   document.querySelectorAll("[data-lang]").forEach(button =>
@@ -204,7 +224,10 @@ export function initMultiUI(getLanguage, notify) {
     if (changes.multiDisplayMode) {
       displayMode = normalizeMultiDisplayMode(changes.multiDisplayMode.newValue);
     }
+    if (changes.multiShowCloseButtons) {
+      showCloseButtons = changes.multiShowCloseButtons.newValue !== false;
+    }
     if (changes.multiTargets || changes.multiAutoCloseSeconds ||
-        changes.multiDisplayMode) render();
+        changes.multiDisplayMode || changes.multiShowCloseButtons) render();
   });
 }

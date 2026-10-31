@@ -55,7 +55,29 @@ export function normalizedWorkArea(area) {
     [key, Math.round(area[key])]));
 }
 
-// Pick a grid with readable cells. The final row expands to use the full screen.
+// Page screen dimensions can be privacy-spoofed or CSS-scaled, while the
+// browser.windows API uses its own window coordinate system. Prefer native
+// bounds when the source Firefox window fills the monitor; otherwise derive
+// its screen-space scale and origin from the SAME source window.
+export function calibratedWorkArea(pageArea, firefoxWindow, pageOuterBounds) {
+  const page = normalizedWorkArea(pageArea);
+  const native = normalizedWorkArea(firefoxWindow);
+  if (native && ["maximized", "fullscreen"].includes(firefoxWindow.state)) return native;
+  if (!page) return native;
+  const outer = normalizedWorkArea(pageOuterBounds);
+  if (!native || !outer) return page;
+  const scaleX = native.width / outer.width;
+  const scaleY = native.height / outer.height;
+  if (![scaleX, scaleY].every(scale => scale >= 0.5 && scale <= 3)) return page;
+  return normalizedWorkArea({
+    left: native.left + (page.left - outer.left) * scaleX,
+    top: native.top + (page.top - outer.top) * scaleY,
+    width: page.width * scaleX,
+    height: page.height * scaleY,
+  }) ?? page;
+}
+
+// Keep every tile the same size; center the last row instead of stretching its windows.
 export function tileWindows(area, requested, minWidth = MIN_WIDTH, minHeight = MIN_HEIGHT) {
   const work = normalizedWorkArea(area);
   if (!work || !Number.isInteger(requested) || requested < 0) return [];
@@ -75,15 +97,85 @@ export function tileWindows(area, requested, minWidth = MIN_WIDTH, minHeight = M
   const tiles = [];
   for (let row = 0, index = 0; row < best.rows; row++) {
     const inRow = Math.min(best.columns, count - index);
+    const offset = (best.columns - inRow) / 2;
     const top = work.top + Math.floor(work.height * row / best.rows);
     const bottom = work.top + Math.floor(work.height * (row + 1) / best.rows);
     for (let column = 0; column < inRow; column++, index++) {
-      const left = work.left + Math.floor(work.width * column / inRow);
-      const right = work.left + Math.floor(work.width * (column + 1) / inRow);
+      const left = work.left + Math.floor(work.width * (column + offset) / best.columns);
+      const right = work.left + Math.floor(work.width * (column + offset + 1) / best.columns);
       tiles.push({ left, top, width: right - left, height: bottom - top });
     }
   }
   return tiles;
+}
+
+// Resize and move separately: on Windows, a combined update may clamp the
+// position against the OLD window size before applying the new dimensions.
+export async function settleTiledWindows(api, entries) {
+  if (typeof api.windows.update !== "function") return [];
+  const requested = new Map(entries.map(({ windowId, tile }) => [
+    windowId, { width: tile.width, height: tile.height },
+  ]));
+  const update = async (id, bounds) => {
+    try { await api.windows.update(id, bounds); return true; }
+    catch (error) {
+      console.warn("Fast Search: could not resize or move search window", id, error);
+      return false;
+    }
+  };
+  // Give the OS a chance to apply each size before positioning anything.
+  for (const { windowId, tile } of entries) {
+    await update(windowId, { width: tile.width, height: tile.height });
+  }
+  for (const { windowId, tile } of entries) {
+    await update(windowId, { left: tile.left, top: tile.top });
+  }
+  if (typeof api.windows.get !== "function") return [];
+  // Some Firefox versions add non-client dimensions after creation. Measure
+  // outer bounds and compensate for the observed difference, not just retry.
+  for (const pause of [250, 750]) {
+    await new Promise(resolve => setTimeout(resolve, pause));
+    for (const { windowId, tile } of entries) {
+      try {
+        const actual = await api.windows.get(windowId);
+        const previous = requested.get(windowId);
+        const dimensions = { ...previous };
+        for (const axis of ["width", "height"]) {
+          if (!Number.isFinite(actual[axis])) continue;
+          const difference = tile[axis] - actual[axis];
+          if (Math.abs(difference) > 2) {
+            const floor = axis === "width" ? 200 : 150;
+            dimensions[axis] = Math.max(floor, previous[axis] + difference);
+          }
+        }
+        if (dimensions.width !== previous.width || dimensions.height !== previous.height) {
+          requested.set(windowId, dimensions);
+          await update(windowId, dimensions);
+        }
+        if (dimensions.width !== previous.width || dimensions.height !== previous.height ||
+            Math.abs(actual.left - tile.left) > 2 || Math.abs(actual.top - tile.top) > 2) {
+          await update(windowId, { left: tile.left, top: tile.top });
+        }
+      } catch { /* The user may have closed a window during placement. */ }
+    }
+  }
+  const constrained = [];
+  for (const { windowId, tile } of entries) {
+    try {
+      const actual = await api.windows.get(windowId);
+      if (["left", "top", "width", "height"].some(key =>
+        Number.isFinite(actual[key]) && Math.abs(actual[key] - tile[key]) > 3)) {
+        constrained.push({ windowId, expected: tile, actual: {
+          left: actual.left, top: actual.top,
+          width: actual.width, height: actual.height,
+        } });
+      }
+    } catch { /* The window has been closed. */ }
+  }
+  if (constrained.length) {
+    console.warn("Fast Search: Firefox/Windows did not accept these tile bounds", constrained);
+  }
+  return constrained;
 }
 
 async function selectedContext(api, tab) {
@@ -100,29 +192,48 @@ async function selectedContext(api, tab) {
     } catch { return null; }
   }
   const frames = results.map(item => item?.result).filter(item => item && typeof item.text === "string");
-  return frames.find(frame => frame.focused && frame.text.trim()) ||
-    frames.find(frame => frame.text.trim()) || null;
+  const selected = frames.find(frame => frame.focused && frame.text.trim()) ||
+    frames.find(frame => frame.text.trim());
+  if (!selected) return null;
+  // An iframe can have its own outerWidth. Use the top document for geometry.
+  const top = results.find(item => item.frameId === 0)?.result || frames[0];
+  return { ...selected,
+    screenBounds: top?.screenBounds ?? selected.screenBounds,
+    outerBounds: top?.outerBounds ?? selected.outerBounds };
+
 }
 
-export async function openMultiSearch(api, { tab, selectedText, screenBounds } = {}) {
+export async function openMultiSearch(api, { tab, selectedText, screenBounds, outerBounds } = {}) {
   const sourceTab = Number.isInteger(tab?.id) ? tab :
     (await api.tabs.query({ active: true, lastFocusedWindow: true }))[0];
   if (!Number.isInteger(sourceTab?.id)) return { opened: 0, requested: 0, reason: "noTab" };
 
   let text = typeof selectedText === "string" ? selectedText : "";
-  let area = normalizedWorkArea(screenBounds);
-  if (!text.trim() || !area) {
+  let pageArea = normalizedWorkArea(screenBounds);
+  let pageOuter = normalizedWorkArea(outerBounds);
+  if (!text.trim() || !pageArea || !pageOuter) {
     const context = await selectedContext(api, sourceTab);
     if (!text.trim()) text = context?.text || "";
-    if (!area) area = normalizedWorkArea(context?.screenBounds);
+    if (!pageArea) pageArea = normalizedWorkArea(context?.screenBounds);
+    if (!pageOuter) pageOuter = normalizedWorkArea(context?.outerBounds);
   }
   if (!text.trim()) return { opened: 0, requested: 0, reason: "noSelection" };
 
-  if (!area) {
-    try {
-      const windowInfo = await api.windows.get(sourceTab.windowId);
-      area = normalizedWorkArea(windowInfo);
-    } catch { /* Some window managers do not expose a work area. */ }
+  let firefoxWindow = null;
+  try {
+    if (Number.isInteger(sourceTab.windowId) && typeof api.windows?.get === "function") {
+      firefoxWindow = await api.windows.get(sourceTab.windowId);
+    }
+  } catch { /* Firefox may close the source window during selection. */ }
+  const area = calibratedWorkArea(pageArea, firefoxWindow, pageOuter);
+  if (pageArea && firefoxWindow && area) {
+    console.info("Fast Search: calibrated display", {
+      pageArea, pageOuter, sourceWindow: {
+        left: firefoxWindow.left, top: firefoxWindow.top,
+        width: firefoxWindow.width, height: firefoxWindow.height,
+        state: firefoxWindow.state,
+      }, workArea: area,
+    });
   }
   const settings = await api.storage.local.get([
     "multiTargets", "multiAutoCloseSeconds", "uiLanguage", "multiDisplayMode",
@@ -134,6 +245,7 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
   let openedWindows = [];
   let failed = 0;
   let skipped = 0;
+  let constrained = 0;
   if (mode === "tabs") {
     // One normal Firefox window: one genuine search website per browser tab.
     // A popup type would hide browser chrome, including the tab strip.
@@ -153,12 +265,24 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
     if (!area) return { opened: 0, requested: targets.length, mode, reason: "noScreen" };
     const tiles = tileWindows(area, targets.length);
     skipped = targets.length - tiles.length;
-    // Start every browser window immediately; do not wait for previous windows to load.
-    const results = await Promise.allSettled(tiles.map((tile, index) =>
-      api.windows.create({ url: buildSearchUrl(targets[index], text), type: "popup", ...tile })));
-    openedWindows = results.filter(result => result.status === "fulfilled" &&
-      Number.isInteger(result.value?.id)).map(result => result.value);
-    failed = results.length - openedWindows.length;
+    // Sequential creation prevents Firefox/Windows from overriding earlier popup
+    // geometry while several new windows initialize at the same instant.
+    const placed = [];
+    for (const [index, tile] of tiles.entries()) {
+      try {
+        const window = await api.windows.create({
+          url: buildSearchUrl(targets[index], text), type: "popup", ...tile,
+        });
+        if (Number.isInteger(window?.id)) placed.push({ window, tile });
+        else failed++;
+      } catch (error) {
+        failed++;
+        console.warn("Fast Search: could not create tiled window", error);
+      }
+    }
+    openedWindows = placed.map(item => item.window);
+    constrained = (await settleTiledWindows(api, placed.map(({ window, tile }) =>
+      ({ windowId: window.id, tile })))).length;
   }
 
   if (openedWindows.length) {
@@ -199,5 +323,5 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds } =
 
   return { opened: openedWindows.length, requested: targets.length,
     mode, tabs: mode === "tabs" && openedWindows.length ? targets.length : 0,
-    failed, skipped };
+    failed, skipped, constrained };
 }

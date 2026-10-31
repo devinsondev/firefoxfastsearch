@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeMultiTargets, normalizeMultiDisplayMode,
-  tabbedWindowBounds, tileWindows, openMultiSearch
+  tabbedWindowBounds, tileWindows, settleTiledWindows, openMultiSearch
 } from "../extension/core/multi-search.js";
 
 test("first launch defaults to four providers", () => {
@@ -41,11 +41,19 @@ test("uses nonzero screen offsets and no overlap for 5 windows", () => {
       a.top + a.height <= b.top || b.top + b.height <= a.top);
   }
 });
+test("five windows have uniform sizes and a centered final row", () => {
+  const tiles = tileWindows({ left: 0, top: 0, width: 1800, height: 1000 }, 5);
+  assert.equal(tiles.length, 5);
+  assert.deepEqual(tiles.map(tile => [tile.width, tile.height]),
+    Array.from({ length: 5 }, () => [600, 500]));
+  assert.deepEqual(tiles.map(tile => [tile.left, tile.top]),
+    [[0, 0], [600, 0], [1200, 0], [300, 500], [900, 500]]);
+});
 test("does not open more windows than comfortably fit", () => {
   const tiles = tileWindows({ left: 0, top: 0, width: 1200, height: 800 }, 16);
   assert.ok(tiles.length <= 4);
 });
-test("four windows launch concurrently and auto-close uses user-supplied seconds", async () => {
+test("four windows launch in order and auto-close uses user-supplied seconds", async () => {
   const created = [], messages = [], alarms = [], sessionStore = {};
   let active = 0, peak = 0;
   const api = {
@@ -72,7 +80,7 @@ test("four windows launch concurrently and auto-close uses user-supplied seconds
   const startTime = Date.now();
   const result = await openMultiSearch(api);
   assert.equal(result.opened, 4);
-  assert.equal(peak, 4, "all window creations should begin before any finishes");
+  assert.equal(peak, 1, "window creation must not race against other popup placements");
   assert.equal(new Set(created.map(x => new URL(x.url).hostname)).size, 4);
   assert.ok(created.every(x => x.type === "popup"));
   assert.equal(messages.length, 5);
@@ -82,6 +90,99 @@ test("four windows launch concurrently and auto-close uses user-supplied seconds
   assert.ok(alarms[0].info.when <= Date.now() + 12000);
   assert.equal(sessionStore.multiSearchSessions[0].windowIds.length, 4);
   assert.equal(sessionStore.multiSearchSessions[0].language, "ru");
+});
+test("reapplies the four exact screen quadrants after all windows are created", async () => {
+  const area = { left: 0, top: 0, width: 1600, height: 960 };
+  const created = [], updated = [], store = {};
+  const api = {
+    tabs: {
+      query: async options => options?.windowId ? [] : [{ id: 20, windowId: 10 }],
+      sendMessage: async () => {},
+    },
+    scripting: { executeScript: async () => [{ result: { focused: true, text: "test",
+      screenBounds: area } }] },
+    storage: {
+      local: { get: async () => ({}) },
+      session: { get: async key => ({ [key]: store[key] }),
+        set: async value => Object.assign(store, value) },
+    },
+    windows: {
+      create: async details => {
+        const index = created.push(details);
+        return { id: 100 + index, left: 200, top: 200, width: 600, height: 400 };
+      },
+      update: async (id, bounds) => {
+        updated.push({ id, ...bounds });
+        return { id, ...bounds };
+      },
+      get: async id => updated.findLast(item => item.id === id),
+    },
+    alarms: { create: async () => {} },
+  };
+  assert.equal((await openMultiSearch(api)).opened, 4);
+  assert.equal(updated.length, 8);
+  assert.deepEqual(updated.slice(0, 4).map(({ width, height }) =>
+    ({ width, height })), tileWindows(area, 4).map(({ width, height }) => ({ width, height })));
+  assert.deepEqual(updated.slice(4, 8).map(({ left, top }) =>
+    ({ left, top })), tileWindows(area, 4).map(({ left, top }) => ({ left, top })));
+  assert.deepEqual(store.multiSearchSessions[0].windowIds, [101, 102, 103, 104]);
+});
+test("retries positioning when the window manager reports shifted bounds", async () => {
+  const tile = { left: 0, top: 0, width: 800, height: 480 };
+  const updated = [];
+  await settleTiledWindows({
+    windows: {
+      update: async id => { updated.push(id); },
+      get: async id => ({ ...tile, left: id === 2 ? 20 : 0 }),
+    },
+  }, [{ windowId: 1, tile }, { windowId: 2, tile }]);
+  assert.deepEqual(updated, [1, 2, 1, 2, 2, 2]);
+});
+test("compensates for browser frame dimensions before moving the right tile", async () => {
+  const tile = { left: 1024, top: 615, width: 1024, height: 615 };
+  const calls = [], size = { left: 0, top: 0, width: 1120, height: 665 };
+  const api = { windows: {
+    update: async (id, details) => {
+      calls.push(details);
+      if (Number.isFinite(details.width)) size.width = details.width + 96;
+      if (Number.isFinite(details.height)) size.height = details.height + 50;
+      if (Number.isFinite(details.left)) {
+        size.left = Math.min(details.left, 2048 - size.width);
+      }
+      if (Number.isFinite(details.top)) size.top = Math.min(details.top, 1230 - size.height);
+    },
+    get: async () => ({ ...size }),
+  } };
+  const constrained = await settleTiledWindows(api, [{ windowId: 1, tile }]);
+  assert.deepEqual(constrained, []);
+  assert.deepEqual(size, tile);
+  assert.ok(calls.some(call => call.width === 928 && call.height === 565));
+  assert.ok(calls.some(call => call.left === 1024 && call.top === 615));
+  assert.ok(calls.every(call => !(Object.hasOwn(call, "left") &&
+    Object.hasOwn(call, "width"))), "resize and move must be separate updates");
+});
+test("reports a minimum window size that Firefox refuses to shrink", async () => {
+  const tile = { left: 1024, top: 0, width: 1024, height: 615 };
+  const actual = { left: 928, top: 0, width: 1120, height: 665 };
+  const api = { windows: {
+    update: async (id, details) => {
+      if (Number.isFinite(details.width)) actual.width = Math.max(1120, details.width);
+      if (Number.isFinite(details.height)) actual.height = Math.max(665, details.height);
+      if (Number.isFinite(details.left)) {
+        actual.left = Math.min(details.left, 2048 - actual.width);
+      }
+      if (Number.isFinite(details.top)) actual.top = details.top;
+    },
+    get: async () => ({ ...actual }),
+  } };
+  const oldWarn = console.warn;
+  console.warn = () => {};
+  let constrained;
+  try { constrained = await settleTiledWindows(api, [{ windowId: 1, tile }]); }
+  finally { console.warn = oldWarn; }
+  assert.equal(constrained.length, 1);
+  assert.equal(constrained[0].expected.width, 1024);
+  assert.equal(constrained[0].actual.width, 1120);
 });
 test("disabled auto-close never creates an alarm", async () => {
   const sessionStore = {}, alarms = [];

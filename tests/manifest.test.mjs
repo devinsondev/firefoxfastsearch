@@ -28,12 +28,17 @@ test("all settings labels have translations", () => {
 });
 test("icons are referenced by the manifest", () => {
   assert.equal(manifest.action.default_icon, "icons/icon.png");
-  assert.equal(manifest.icons["128"], "icons/icon.png");
+  assert.deepEqual(manifest.icons, { "256": "icons/icon.png" });
+  const png = readFileSync(new URL(manifest.icons["256"], extension));
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(png.readUInt32BE(16), 256);
+  assert.equal(png.readUInt32BE(20), 256);
 });
 
 test("data transmission is disclosed with built-in Firefox consent", () => {
   const gecko = manifest.browser_specific_settings.gecko;
-  assert.ok(parseInt(gecko.strict_min_version, 10) >= 140);
+  assert.equal(gecko.strict_min_version, "140.0");
+  assert.equal(manifest.browser_specific_settings.gecko_android.strict_min_version, "142.0");
   assert.deepEqual(gecko.data_collection_permissions.required.sort(),
     ["searchTerms", "websiteContent"].sort());
 });
@@ -78,6 +83,15 @@ test("popup reuses the full-page profile controller", () => {
   assert.match(popup, /id="fullSettings"/);
   assert.match(popup, /href="legal\.html"/);
   assert.doesNotMatch(popup, /(?:src|href)="https?:\/\//);
+});
+test("search-window Close all overlay has a persistent optional toggle", () => {
+  const ui = readFileSync(new URL("ui/multi-ui.js", extension), "utf8");
+  const script = readFileSync(new URL("content-multi.js", extension), "utf8");
+  assert.match(ui, /multiShowCloseButtons/);
+  assert.match(script, /multiShowCloseButtons/);
+  assert.match(script, /sourceControl/);
+  const background = readFileSync(new URL("background.js", extension), "utf8");
+  assert.match(background, /import \{ openMultiSearch \} from "\.\/core\/multi-search\.js"/);
 });
 test("popup labels are localized in both languages", () => {
   const popup = readFileSync(new URL("popup.html", extension), "utf8");

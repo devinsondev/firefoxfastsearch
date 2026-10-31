@@ -14,6 +14,9 @@ export function readSelection() {
   return { text, focused: document.hasFocus(), screenBounds: {
     left: screen.availLeft, top: screen.availTop,
     width: screen.availWidth, height: screen.availHeight,
+  }, outerBounds: {
+    left: window.screenX, top: window.screenY,
+    width: window.outerWidth, height: window.outerHeight,
   } };
 }
 
