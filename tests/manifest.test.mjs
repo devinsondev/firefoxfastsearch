@@ -83,3 +83,15 @@ test("popup does not allow users to upload custom icons", () => {
   assert.doesNotMatch(popup, /type="file"|iconDrop|iconFile|resetIcon/);
   assert.equal(manifest.action.default_icon, "icons/icon.png");
 });
+
+test("optional on-selection search icon runs on webpages and has shared controls", () => {
+  const script = manifest.content_scripts[0];
+  assert.deepEqual(script.matches, ["http://*/*", "https://*/*"]);
+  assert.deepEqual(script.js, ["core/icon-placement.js", "selection-icon.js"]);
+  assert.equal(script.all_frames, true);
+  for (const file of ["options.html", "popup.html"]) {
+    const html = readFileSync(new URL(file, extension), "utf8");
+    for (const id of ["selectionIconEnabled", "iconDial", "iconPreview", "iconAngleValue"])
+      assert.ok(html.includes('id="' + id + '"'), file + ": " + id);
+  }
+});

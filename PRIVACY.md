@@ -7,11 +7,11 @@
 
 ## English
 
-**What the extension accesses:** After the user presses one of the configured search shortcuts, the extension reads the selected text in the current webpage (including accessible frames or selected text fields) to build a search request. It does not read selections continuously.
+**What the extension accesses:** When the selection icon is enabled, a local content script observes selections on HTTP(S) pages to position the button, without transmitting the text. After clicking the icon or pressing a shortcut, the extension reads the selected text in the current webpage (including accessible frames or selected text fields) to build a search request. Turning the icon off disables this local selection monitoring; shortcut searches still work.
 
 **Where data goes:** The selected text becomes a search query in the new tab's URL and is sent to the **search provider chosen by the user** (Google, DuckDuckGo, Yandex, Bing, or a user-configured HTTPS provider). Third-party providers may log, process, retain or share this query under their own policies. The browser may save the query URL in browsing history. Avoid selecting passwords, credentials, private messages, or other confidential data.
 
-**What stays local:** Search profiles, custom provider URL templates, foreground/background behavior and language settings are stored with Firefox's local extension storage. Shortcut mappings are managed by Firefox. The extension does not send these settings to the developer.
+**What stays local:** Search profiles, custom provider URL templates, foreground/background behavior, icon visibility and angle, and language settings are stored with Firefox's local extension storage. Shortcut mappings are managed by Firefox. The extension does not send these settings to the developer.
 
 **What the developer does not collect:** There is no developer-operated server, analytics service, advertising tracker, telemetry pipeline, or sale of user data. The extension does not intentionally collect search query logs or account identifiers for the developer.
 
@@ -21,11 +21,11 @@
 
 ## Русский
 
-**Какие данные доступны:** Только после нажатия назначенной горячей клавиши расширение читает выделенный текст на текущей веб-странице (включая доступные фреймы и текстовые поля), чтобы сформировать поисковый запрос. Постоянного чтения выделений нет.
+**Какие данные доступны:** Когда иконка включена, локальный скрипт отслеживает выделение на HTTP(S)-страницах для размещения кнопки, не передавая текст. После нажатия на иконку или горячую клавишу расширение читает выделенный текст на текущей веб-странице (включая доступные фреймы и текстовые поля), чтобы сформировать поисковый запрос. При отключении иконки локальное отслеживание выделений прекращается; горячие клавиши остаются.
 
 **Куда отправляются данные:** Выделенный текст становится запросом в URL новой вкладки и передаётся **выбранному пользователем поисковику** (Google, DuckDuckGo, Yandex, Bing или своему HTTPS-поисковику). Сторонний сайт может обрабатывать, хранить и передавать запрос в соответствии со своей политикой. URL может попасть в историю Firefox. Не выделяйте пароли, токены, личные сообщения или другую конфиденциальную информацию.
 
-**Что хранится локально:** Профили поиска, шаблоны пользовательских поисковиков, режимы вкладок и язык сохраняются в локальном хранилище Firefox. Привязками клавиш управляет Firefox. Эти настройки не отправляются разработчику.
+**Что хранится локально:** Профили поиска, шаблоны пользовательских поисковиков, режимы вкладок, видимость и угол иконки, а также язык сохраняются в локальном хранилище Firefox. Привязками клавиш управляет Firefox. Эти настройки не отправляются разработчику.
 
 **Что разработчик не собирает:** У проекта нет собственного сервера для запросов, аналитики, рекламных трекеров, телеметрии или продажи пользовательских данных. Расширение не ведёт поисковые журналы или учётные записи для разработчика.
 

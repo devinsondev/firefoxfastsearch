@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Fast Search for Firefox</title>
   <link rel="stylesheet" href="options.css">
+  <script src="core/icon-placement.js"></script>
   <script type="module" src="options.js"></script>
 </head>
 <body>
@@ -85,6 +86,44 @@
     <section class="disclosure" aria-labelledby="disclosureHeading">
       <h2 id="disclosureHeading" data-i18n="disclosureHeading">Передача текста</h2>
       <p data-i18n="disclosureText">После нажатия горячей клавиши выделенный текст будет передан выбранному поисковику. Не выделяй пароли и конфиденциальные данные.</p>
+    </section>
+
+
+    <section class="selection-settings" aria-labelledby="selectionHeading">
+      <div class="section-title">
+        <div><h2 id="selectionHeading" data-i18n="iconSettingsHeading">Иконка выделения</h2>
+          <p data-i18n="iconSettingsHelp">Быстрый поиск по первому профилю без горячих клавиш.</p></div>
+      </div>
+      <label class="icon-switch">
+        <input id="selectionIconEnabled" type="checkbox">
+        <span><strong data-i18n="iconEnabled">Показывать иконку при выделении текста</strong>
+          <small data-i18n="iconEnabledHelp">Выключение не влияет на горячие клавиши.</small></span>
+      </label>
+      <div class="icon-position-settings">
+        <div class="icon-position-heading">
+          <h3 id="iconPositionHeading" data-i18n="iconPosition">Положение относительно текста</h3>
+          <output id="iconAngleValue" for="iconDial">90°</output>
+        </div>
+        <div class="icon-position-layout">
+          <div id="iconDial" class="icon-dial" role="slider" tabindex="0"
+               aria-labelledby="iconPositionHeading" aria-describedby="iconDialHelpText"
+               aria-valuemin="0" aria-valuemax="359" aria-valuenow="90">
+            <span class="dial-track" aria-hidden="true"></span>
+            <span id="iconWord" class="dial-word" data-i18n="iconSample">слово</span>
+            <span id="iconPreview" class="dial-marker" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 5 5"></path>
+              </svg>
+            </span>
+          </div>
+          <div class="icon-position-notes">
+            <p id="iconDialHelpText" data-i18n="iconDialHelp">Перетаскивай значок вокруг слова на 360°.</p>
+            <p data-i18n="iconDialKeyboard">Точно настроить можно стрелками на клавиатуре.</p>
+            <button id="resetIconAngle" class="quiet" type="button" data-i18n="resetIconAngle">Вернуть вправо</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <div id="status" role="status" aria-live="polite"></div>

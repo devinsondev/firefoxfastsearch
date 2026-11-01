@@ -95,5 +95,19 @@
     "search-profile-16": {
       "description": "Search selection (profile 16)"
     }
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "core/icon-placement.js",
+        "selection-icon.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
 }

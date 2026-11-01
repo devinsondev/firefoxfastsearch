@@ -51,3 +51,22 @@ footer a{color:var(--accent-hover);font-size:11px;white-space:nowrap}
 /* Keep the two-column editor even under the full page's mobile breakpoint. */
 @media(max-width:680px){.form-grid,.mode-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .masthead{align-items:center}.editor{padding:15px}.section-title{align-items:center}}
+
+/* Compact controls for the on-selection icon. */
+.selection-settings{margin-top:12px;padding:12px 13px;border-radius:12px}
+.selection-settings .section-title{margin-bottom:8px}
+.selection-settings .section-title h2{font-size:13px}
+.selection-settings .section-title p{font-size:10px;line-height:1.4}
+.icon-switch{gap:10px;padding:9px 10px;border-radius:9px}
+.icon-switch strong{font-size:11px}
+.icon-switch small{font-size:10px;line-height:1.4}
+.icon-position-settings{margin-top:12px}
+.icon-position-heading h3{font-size:12px}
+.icon-position-heading output{font-size:14px}
+.icon-position-layout{gap:10px;margin-top:7px;flex-wrap:nowrap}
+.icon-dial{width:180px;height:150px;border-radius:10px}
+.dial-word{font-size:13px;padding:3px 6px}
+.dial-track{width:112px;height:87px}
+.icon-position-notes{min-width:0;flex:1;gap:6px}
+.icon-position-notes p{font-size:10px;line-height:1.4}
+.icon-position-notes .quiet{font-size:10px;margin:0;padding:4px 0}
