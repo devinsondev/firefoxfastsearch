@@ -70,9 +70,11 @@ test("multi-search uses the maximized source window for all four popup placement
 
 test("both shortcut selection and page button supply outer window metrics", () => {
   const selection = readFileSync(new URL("../extension/core/selection.js", import.meta.url), "utf8");
-  const content = readFileSync(new URL("../extension/content-multi.js", import.meta.url), "utf8");
+  const content = readFileSync(new URL("../extension/selection-icon.js", import.meta.url), "utf8");
   const background = readFileSync(new URL("../extension/background.js", import.meta.url), "utf8");
   assert.match(selection, /outerBounds/);
-  assert.match(content, /screenBounds, outerBounds/);
+  assert.match(content, /action: "multiSearch"/);
+  assert.match(content, /screenBounds:/);
+  assert.match(content, /outerBounds:/);
   assert.match(background, /outerBounds: message.outerBounds/);
 });
