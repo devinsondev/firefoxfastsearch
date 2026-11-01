@@ -1,7 +1,7 @@
 # Privacy policy / Политика конфиденциальности
 
 **Product:** Fast Search for Firefox  
-**Last updated:** 2026-10-13  
+**Last updated:** 2026-11-01  
 **Developer:** devinsondev  
 **Contact:** https://github.com/devinsondev/firefoxfastsearch/issues
 
