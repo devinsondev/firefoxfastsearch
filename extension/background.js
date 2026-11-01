@@ -1,18 +1,12 @@
-import { searchByCommand, searchSelectionFromIcon } from "./core/search.js";
+import { runSearchCommand } from "./core/command-router.js";
+import { openMultiSearch } from "./core/multi-search.js";
+import { searchSelectionFromIcon } from "./core/search.js";
+import { ALARM_PREFIX, closeAllMultiSessions, closeMultiSession,
+  forgetMultiWindow, multiSessionForWindow } from "./core/multi-sessions.js";
 
 browser.commands.onCommand.addListener((command, tab) => {
-  void searchByCommand(browser, command, tab).catch(error =>
-    console.warn("Fast Search: search failed", error));
-});
-
-
-browser.runtime.onMessage.addListener((message, sender) => {
-  if (message?.type !== "fast-search:selection-icon" ||
-      typeof message.text !== "string" || !Number.isInteger(sender.tab?.id)) return;
-  return searchSelectionFromIcon(browser, message.text, sender.tab).catch(error => {
-    console.warn("Fast Search: selection icon search failed", error);
-    return false;
-  });
+  void runSearchCommand(browser, command, tab).catch(error =>
+    console.warn("Fast Search: command failed", error));
 });
 
 // Remove any icon uploaded in older versions. Only the bundled icon is supported.
@@ -24,3 +18,52 @@ void (async () => {
     console.warn("Fast Search: could not reset the legacy toolbar icon", error);
   }
 })();
+
+browser.runtime.onMessage.addListener((message, sender) => {
+  if (message?.type === "fast-search:selection-icon" &&
+      typeof message.text === "string" && Number.isInteger(sender.tab?.id)) {
+    return searchSelectionFromIcon(browser, message.text, sender.tab).catch(error => {
+      console.warn("Fast Search: icon search failed", error);
+      return false;
+    });
+  }
+  if (message?.action === "multiSearch" && Number.isInteger(sender.tab?.id)) {
+    return openMultiSearch(browser, { tab: sender.tab,
+      selectedText: message.text, screenBounds: message.screenBounds,
+      outerBounds: message.outerBounds });
+  }
+  if (message?.action === "multiSearchActive") return openMultiSearch(browser);
+  if (message?.action === "multiSessionInfo") {
+    return multiSessionForWindow(browser, sender.tab?.windowId);
+  }
+  if (message?.action === "multiCloseGroup" && Number.isInteger(sender.tab?.windowId)) {
+    return closeMultiSession(browser, message.id, sender.tab.windowId, sender.tab.id);
+  }
+  if (message?.action === "multiCloseAllManaged" &&
+      sender.url?.startsWith(browser.runtime.getURL(""))) {
+    return closeAllMultiSessions(browser);
+  }
+  return undefined;
+});
+
+browser.alarms.onAlarm.addListener(alarm => {
+  if (!alarm.name.startsWith(ALARM_PREFIX)) return;
+  void closeMultiSession(browser, alarm.name.slice(ALARM_PREFIX.length)).catch(error =>
+    console.warn("Fast Search: auto-close failed", error));
+});
+browser.windows.onRemoved.addListener(windowId => {
+  void forgetMultiWindow(browser, windowId).catch(error =>
+    console.warn("Fast Search: multi-search cleanup failed", error));
+});
+
+// A search page can finish loading after its window is registered.
+// Notify the content script after navigation so the Close all button appears.
+browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status !== "complete" || !Number.isInteger(tab.windowId)) return;
+  void multiSessionForWindow(browser, tab.windowId)
+    .then(session => {
+      if (session) return browser.tabs.sendMessage(tabId, { action: "multiSessionReady" })
+        .catch(() => {});
+    })
+    .catch(error => console.warn("Fast Search: could not refresh close control", error));
+});

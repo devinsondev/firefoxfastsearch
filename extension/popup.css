@@ -70,3 +70,7 @@ footer a{color:var(--accent-hover);font-size:11px;white-space:nowrap}
 .icon-position-notes{min-width:0;flex:1;gap:6px}
 .icon-position-notes p{font-size:10px;line-height:1.4}
 .icon-position-notes .quiet{font-size:10px;margin:0;padding:4px 0}
+
+.selection-settings .icon-action-field{gap:8px;align-items:center;flex-direction:row;margin-top:10px}
+.selection-settings .icon-action-field>span{font-size:10px;max-width:105px}
+.selection-settings .icon-action-field select{font-size:10px;padding:6px 5px;max-width:220px}
