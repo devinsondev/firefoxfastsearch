@@ -83,12 +83,19 @@
     <section class="selection-settings" aria-labelledby="selectionHeading">
       <div class="section-title">
         <div><h2 id="selectionHeading" data-i18n="iconSettingsHeading">Иконка выделения</h2>
-          <p data-i18n="iconSettingsHelp">Быстрый поиск по первому профилю без горячих клавиш.</p></div>
+          <p data-i18n="iconSettingsHelp">Выбери действие и положение иконки.</p></div>
       </div>
       <label class="icon-switch">
         <input id="selectionIconEnabled" type="checkbox">
         <span><strong data-i18n="iconEnabled">Показывать иконку при выделении текста</strong>
           <small data-i18n="iconEnabledHelp">Выключение не влияет на горячие клавиши.</small></span>
+      </label>
+      <label class="icon-action-field" for="selectionIconAction">
+        <span data-i18n="iconSearchAction">Действие при нажатии</span>
+        <select id="selectionIconAction">
+          <option value="multi" data-i18n="iconActionMulti">Мультипоиск (все выбранные сайты)</option>
+          <option value="single" data-i18n="iconActionSingle">Поиск через первый профиль</option>
+        </select>
       </label>
       <div class="icon-position-settings">
         <div class="icon-position-heading">

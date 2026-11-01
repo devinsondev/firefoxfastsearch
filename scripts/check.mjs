@@ -23,17 +23,27 @@ function walk(directory) {
 walk(root);
 const manifest = JSON.parse(readFileSync(join(extension, "manifest.json"), "utf8"));
 assert.equal(manifest.version, JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version);
-assert.equal(Object.keys(manifest.commands).length, 16);
+assert.equal(Object.keys(manifest.commands).length, 18);
 assert.equal(manifest.commands["search-foreground"].suggested_key.default, "F1");
+assert.equal(manifest.commands["close-multi-search"].suggested_key.default, "Ctrl+Alt+X");
 assert.equal(manifest.action.default_popup, "popup.html");
 assert.equal(manifest.options_ui.page, "options.html");
 assert.ok(existsSync(join(extension, manifest.action.default_popup)));
 assert.ok(existsSync(join(extension, manifest.options_ui.page)));
-assert.deepEqual(manifest.permissions.slice().sort(), ["activeTab", "scripting", "storage"].sort());
-for (const iconPath of [...Object.values(manifest.icons), manifest.action.default_icon]) {
+assert.deepEqual(manifest.permissions.slice().sort(), ["activeTab", "scripting", "storage", "alarms"].sort());
+assert.equal(manifest.browser_specific_settings.gecko.strict_min_version, "140.0");
+assert.equal(manifest.browser_specific_settings.gecko_android.strict_min_version, "142.0");
+assert.deepEqual(Object.keys(manifest.icons), ["256"]);
+for (const [size, iconPath] of Object.entries({
+  ...manifest.icons, "action": manifest.action.default_icon,
+})) {
   const file = join(extension, iconPath);
   assert.ok(existsSync(file), `Missing icon: ${iconPath}`);
-  assert.equal(readFileSync(file).subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  const png = readFileSync(file);
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  const expected = size === "action" ? 256 : Number(size);
+  assert.equal(png.readUInt32BE(16), expected, `${iconPath}: invalid PNG width`);
+  assert.equal(png.readUInt32BE(20), expected, `${iconPath}: invalid PNG height`);
 }
 for (const lang of ["en", "ru"]) {
   const messages = JSON.parse(readFileSync(join(extension, `_locales/${lang}/messages.json`), "utf8"));

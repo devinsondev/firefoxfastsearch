@@ -4,6 +4,7 @@
   const { normalizeAngle, position, DEFAULT_ANGLE } = globalThis.FastSearchIconPlacement;
   let enabled = false; // Do not display anything before reading the saved preference.
   let angle = DEFAULT_ANGLE;
+  let action = "multi";
   let selectedText = "";
   let pointerSelecting = false;
   let updatePending = false;
@@ -27,10 +28,15 @@
   ].join("");
   const button = document.createElement("button");
   button.type = "button";
-  const tooltip = /^ru\b/i.test(browser.i18n.getUILanguage())
-    ? "Найти выделенный текст" : "Search selected text";
-  button.setAttribute("aria-label", tooltip);
-  button.title = tooltip;
+  const isRussian = /^ru\b/i.test(browser.i18n.getUILanguage());
+  function updateTooltip() {
+    const tooltip = action === "multi"
+      ? (isRussian ? "Мультипоиск по выделенному тексту" : "Search selected text in multiple engines")
+      : (isRussian ? "Поиск через первый профиль" : "Search using the first profile");
+    button.setAttribute("aria-label", tooltip);
+    button.title = tooltip;
+  }
+  updateTooltip();
   button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
     '<circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 5 5"></path></svg>';
   shadow.append(style, button);
@@ -100,7 +106,15 @@
     event.stopPropagation();
     const text = selectedText;
     hide();
-    if (text) void browser.runtime.sendMessage({ type: "fast-search:selection-icon", text })
+    if (!text) return;
+    const message = action === "multi"
+      ? { action: "multiSearch", text,
+          screenBounds: { left: screen.availLeft, top: screen.availTop,
+            width: screen.availWidth, height: screen.availHeight },
+          outerBounds: { left: window.screenX, top: window.screenY,
+            width: window.outerWidth, height: window.outerHeight } }
+      : { type: "fast-search:selection-icon", text };
+    void browser.runtime.sendMessage(message)
       .catch(error => console.warn("Fast Search: could not search selection", error));
   });
 
@@ -127,15 +141,21 @@
     if (area !== "local") return;
     if (changes.selectionIconEnabled) enabled = changes.selectionIconEnabled.newValue !== false;
     if (changes.selectionIconAngle) angle = normalizeAngle(changes.selectionIconAngle.newValue);
+    if (changes.selectionIconAction) {
+      action = changes.selectionIconAction.newValue === "single" ? "single" : "multi";
+      updateTooltip();
+    }
     if (changes.selectionIconEnabled || changes.selectionIconAngle) {
       if (enabled) scheduleUpdate();
       else hide();
     }
   });
-  void browser.storage.local.get(["selectionIconEnabled", "selectionIconAngle"])
+  void browser.storage.local.get(["selectionIconEnabled", "selectionIconAngle", "selectionIconAction"])
     .then(settings => {
       enabled = settings.selectionIconEnabled !== false;
       angle = normalizeAngle(settings.selectionIconAngle);
+      action = settings.selectionIconAction === "single" ? "single" : "multi";
+      updateTooltip();
       scheduleUpdate();
     }).catch(error => console.warn("Fast Search: icon settings unavailable", error));
 })();

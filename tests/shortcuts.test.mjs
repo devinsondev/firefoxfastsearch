@@ -45,3 +45,23 @@ test("shortcut can be cleared", async () => {
   await assignShortcut(api, "search-foreground", "");
   assert.deepEqual(updated, { name: "search-foreground", shortcut: "" });
 });
+
+test("close-all shortcut can be remapped and respects F2 conflicts", async () => {
+  const updates = [];
+  const commands = [
+    { name: "search-multi", shortcut: "F2" },
+    { name: "close-multi-search", shortcut: "Ctrl+Alt+X" },
+  ];
+  const api = { commands: {
+    getAll: async () => commands,
+    update: async value => { updates.push(value); },
+  } };
+  await assert.rejects(
+    assignShortcut(api, "close-multi-search", "F2"), /conflicting/
+  );
+  assert.deepEqual(updates, []);
+  await assignShortcut(api, "close-multi-search", "Ctrl+Alt+Z");
+  assert.deepEqual(updates, [
+    { name: "close-multi-search", shortcut: "Ctrl+Alt+Z" },
+  ]);
+});

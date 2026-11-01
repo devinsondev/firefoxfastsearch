@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
   "description": "__MSG_extensionDescription__",
-  "version": "1.3.1",
+  "version": "1.5.5",
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {
@@ -14,12 +14,16 @@
           "websiteContent"
         ]
       }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
     }
   },
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "alarms"
   ],
   "background": {
     "scripts": [
@@ -33,11 +37,7 @@
     "default_popup": "popup.html"
   },
   "icons": {
-    "16": "icons/icon.png",
-    "32": "icons/icon.png",
-    "48": "icons/icon.png",
-    "96": "icons/icon.png",
-    "128": "icons/icon.png"
+    "256": "icons/icon.png"
   },
   "options_ui": {
     "page": "options.html",
@@ -94,20 +94,36 @@
     },
     "search-profile-16": {
       "description": "Search selection (profile 16)"
+    },
+    "search-multi": {
+      "suggested_key": {
+        "default": "F2"
+      },
+      "description": "Search selection in tiled windows or a tabbed window"
+    },
+    "close-multi-search": {
+      "suggested_key": {
+        "default": "Ctrl+Alt+X"
+      },
+      "description": "Close all Firefox Fast Search multi-search windows"
     }
   },
   "content_scripts": [
     {
       "matches": [
-        "http://*/*",
-        "https://*/*"
+        "<all_urls>"
       ],
       "js": [
         "core/icon-placement.js",
-        "selection-icon.js"
-      ],
-      "run_at": "document_idle",
-      "all_frames": true
+        "selection-icon.js",
+        "content-multi.js"
+      ]
     }
+  ],
+  "optional_host_permissions": [
+    "https://*.google.com/*",
+    "https://*.yandex.ru/*",
+    "https://*.bing.com/*",
+    "https://*.duckduckgo.com/*"
   ]
 }

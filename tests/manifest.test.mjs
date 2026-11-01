@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { STRINGS } from "../extension/ui/i18n.js";
+import { SEARCH_HOST_ORIGINS } from "../extension/core/search-hosts.js";
 
 const extension = new URL("../extension/", import.meta.url);
 const manifest = JSON.parse(readFileSync(new URL("manifest.json", extension), "utf8"));
@@ -9,7 +10,15 @@ test("preserves Firefox extension ID and F1 shortcut", () => {
   assert.equal(manifest.browser_specific_settings.gecko.id, "firefoxfastsearch@devinsondev");
   assert.equal(manifest.commands["search-foreground"].suggested_key.default, "F1");
 });
-test("declares 16 profile commands", () => assert.equal(Object.keys(manifest.commands).length, 16));
+test("declares 16 profile commands, multi-search and close command", () => {
+  assert.equal(Object.keys(manifest.commands).length, 18);
+  assert.equal(manifest.commands["close-multi-search"].suggested_key.default, "Ctrl+Alt+X");
+  assert.equal(manifest.commands["search-multi"].suggested_key.default, "F2");
+  assert.ok(manifest.permissions.includes("alarms"));
+  assert.ok(!manifest.permissions.includes("windows"));
+  assert.deepEqual(manifest.content_scripts[0].js,
+    ["core/icon-placement.js", "selection-icon.js", "content-multi.js"]);
+});
 test("localization keys match across Russian and English", () => {
   assert.deepEqual(Object.keys(STRINGS.ru).sort(), Object.keys(STRINGS.en).sort());
 });
@@ -20,12 +29,17 @@ test("all settings labels have translations", () => {
 });
 test("icons are referenced by the manifest", () => {
   assert.equal(manifest.action.default_icon, "icons/icon.png");
-  assert.equal(manifest.icons["128"], "icons/icon.png");
+  assert.deepEqual(manifest.icons, { "256": "icons/icon.png" });
+  const png = readFileSync(new URL(manifest.icons["256"], extension));
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(png.readUInt32BE(16), 256);
+  assert.equal(png.readUInt32BE(20), 256);
 });
 
 test("data transmission is disclosed with built-in Firefox consent", () => {
   const gecko = manifest.browser_specific_settings.gecko;
-  assert.ok(parseInt(gecko.strict_min_version, 10) >= 140);
+  assert.equal(gecko.strict_min_version, "140.0");
+  assert.equal(manifest.browser_specific_settings.gecko_android.strict_min_version, "142.0");
   assert.deepEqual(gecko.data_collection_permissions.required.sort(),
     ["searchTerms", "websiteContent"].sort());
 });
@@ -71,6 +85,15 @@ test("popup reuses the full-page profile controller", () => {
   assert.match(popup, /href="legal\.html"/);
   assert.doesNotMatch(popup, /(?:src|href)="https?:\/\//);
 });
+test("search-window Close all overlay has a persistent optional toggle", () => {
+  const ui = readFileSync(new URL("ui/multi-ui.js", extension), "utf8");
+  const script = readFileSync(new URL("content-multi.js", extension), "utf8");
+  assert.match(ui, /multiShowCloseButtons/);
+  assert.match(script, /multiShowCloseButtons/);
+  assert.match(script, /sourceControl/);
+  const background = readFileSync(new URL("background.js", extension), "utf8");
+  assert.match(background, /import \{ openMultiSearch \} from "\.\/core\/multi-search\.js"/);
+});
 test("popup labels are localized in both languages", () => {
   const popup = readFileSync(new URL("popup.html", extension), "utf8");
   const matches = [...popup.matchAll(/data-i18n(?:-placeholder|-title)?="(\w+)"/g)];
@@ -84,14 +107,27 @@ test("popup does not allow users to upload custom icons", () => {
   assert.equal(manifest.action.default_icon, "icons/icon.png");
 });
 
-test("optional on-selection search icon runs on webpages and has shared controls", () => {
-  const script = manifest.content_scripts[0];
-  assert.deepEqual(script.matches, ["http://*/*", "https://*/*"]);
-  assert.deepEqual(script.js, ["core/icon-placement.js", "selection-icon.js"]);
-  assert.equal(script.all_frames, true);
-  for (const file of ["options.html", "popup.html"]) {
-    const html = readFileSync(new URL(file, extension), "utf8");
-    for (const id of ["selectionIconEnabled", "iconDial", "iconPreview", "iconAngleValue"])
-      assert.ok(html.includes('id="' + id + '"'), file + ": " + id);
+test("optional close button access is restricted to bundled search providers", () => {
+  assert.deepEqual(manifest.optional_host_permissions, SEARCH_HOST_ORIGINS);
+  assert.equal(manifest.optional_host_permissions.length, 4);
+  assert.ok(!manifest.optional_host_permissions.includes("<all_urls>"));
+});
+
+test("selection icon and multi-search controls coexist", () => {
+  const popup = readFileSync(new URL("popup.html", extension), "utf8");
+  const settings = readFileSync(new URL("options.html", extension), "utf8");
+  for (const html of [popup, settings]) {
+    for (const id of ["selectionIconEnabled", "selectionIconAction", "iconDial", "iconPreview", "iconAngleValue"]) {
+      assert.ok(html.includes('id="' + id + '"'), "Missing icon control: " + id);
+    }
   }
+  const options = readFileSync(new URL("options.js", extension), "utf8");
+  assert.match(options, /initMultiUI/);
+  assert.match(options, /selectionIconAngle/);
+  assert.match(options, /selectionIconAction/);
+  const icon = readFileSync(new URL("selection-icon.js", extension), "utf8");
+  assert.match(icon, /action: "multiSearch"/);
+  assert.match(icon, /type: "fast-search:selection-icon"/);
+  const closeControls = readFileSync(new URL("content-multi.js", extension), "utf8");
+  assert.doesNotMatch(closeControls, /let icon\s*;/);
 });

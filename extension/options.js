@@ -1,3 +1,4 @@
+import { initMultiUI } from "./ui/multi-ui.js";
 import { buildSearchUrl, defaultProfile, firstFreeSlot, initialProfiles, normalizeProfiles, SEARCH_ENGINES, SLOT_IDS } from "./core/profiles.js";
 import { applyLanguage, translate } from "./ui/i18n.js";
 import { assignShortcut, shortcutFromEvent } from "./ui/shortcuts.js";
@@ -11,11 +12,12 @@ let recordingId = null;
 let language = "ru";
 let saveChain = Promise.resolve();
 let selectionIconEnabled = true;
+let selectionIconAction = "multi";
 let selectionIconAngle = globalThis.FastSearchIconPlacement.DEFAULT_ANGLE;
 let dialPointerId = null;
 
 function saveIconSettings() {
-  const snapshot = { selectionIconEnabled, selectionIconAngle };
+  const snapshot = { selectionIconEnabled, selectionIconAngle, selectionIconAction };
   saveChain = saveChain.catch(() => {}).then(() => browser.storage.local.set(snapshot));
   saveChain.catch(error => notify(String(error), true));
   return saveChain;
@@ -25,6 +27,7 @@ function renderIconSettings() {
   const dial = $("iconDial");
   const word = $("iconWord");
   $("selectionIconEnabled").checked = selectionIconEnabled;
+  $("selectionIconAction").value = selectionIconAction;
   $("iconAngleValue").textContent = selectionIconAngle + "°";
   dial.setAttribute("aria-valuenow", String(selectionIconAngle));
   dial.setAttribute("aria-valuetext", selectionIconAngle + "°");
@@ -154,6 +157,10 @@ async function changeShortcut(id, value) {
 $("selectionIconEnabled").addEventListener("change", event => {
   selectionIconEnabled = event.target.checked;
   renderIconSettings();
+  void saveIconSettings();
+});
+$("selectionIconAction").addEventListener("change", event => {
+  selectionIconAction = event.target.value === "single" ? "single" : "multi";
   void saveIconSettings();
 });
 function iconAngleFromPointer(event) {
@@ -297,8 +304,9 @@ browser.storage.onChanged.addListener((changes, area) => {
     language = changes.uiLanguage.newValue;
     render();
   }
-  if (changes.selectionIconEnabled || changes.selectionIconAngle) {
+  if (changes.selectionIconEnabled || changes.selectionIconAngle || changes.selectionIconAction) {
     if (changes.selectionIconEnabled) selectionIconEnabled = changes.selectionIconEnabled.newValue !== false;
+    if (changes.selectionIconAction) selectionIconAction = changes.selectionIconAction.newValue === "single" ? "single" : "multi";
     if (changes.selectionIconAngle && dialPointerId === null) {
       selectionIconAngle = globalThis.FastSearchIconPlacement.normalizeAngle(changes.selectionIconAngle.newValue);
     }
@@ -316,10 +324,11 @@ browser.commands.onChanged.addListener(() => void loadCommands().then(render));
 window.addEventListener("focus", () => { if (!recordingId) void loadCommands().then(render); });
 
 void (async () => {
-  const settings = await browser.storage.local.get(["profiles", "searchEngine", "uiLanguage", "selectionIconEnabled", "selectionIconAngle"]);
+  const settings = await browser.storage.local.get(["profiles", "searchEngine", "uiLanguage", "selectionIconEnabled", "selectionIconAngle", "selectionIconAction"]);
   language = ["ru", "en"].includes(settings.uiLanguage) ? settings.uiLanguage :
     (browser.i18n.getUILanguage().toLowerCase().startsWith("ru") ? "ru" : "en");
   selectionIconEnabled = settings.selectionIconEnabled !== false;
+  selectionIconAction = settings.selectionIconAction === "single" ? "single" : "multi";
   selectionIconAngle = globalThis.FastSearchIconPlacement.normalizeAngle(settings.selectionIconAngle);
   await loadCommands();
   const stored = normalizeProfiles(settings.profiles);
@@ -328,3 +337,5 @@ void (async () => {
   selectedId = profiles[0]?.id ?? null;
   render();
 })().catch(error => notify(String(error), true));
+
+initMultiUI(() => language, notify);
