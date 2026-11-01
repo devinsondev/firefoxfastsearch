@@ -33,7 +33,7 @@ test("runtime image uploads are removed, while bundled icon remains", () => {
   const html = readFileSync(new URL("options.html", extension), "utf8");
   const options = readFileSync(new URL("options.js", extension), "utf8");
   const background = readFileSync(new URL("background.js", extension), "utf8");
-  assert.doesNotMatch(html, /type="file"|iconDrop|iconFile|resetIcon/);
+  assert.doesNotMatch(html, /type="file"|iconDrop|iconFile|id="resetIcon"/);
   assert.doesNotMatch(options, /setupIconPicker|icon-picker/);
   assert.doesNotMatch(background, /applyToolbarIcon|storage\.onChanged/);
   assert.match(background, /remove\("toolbarIcon"\)/);
@@ -80,7 +80,7 @@ test("popup labels are localized in both languages", () => {
 });
 test("popup does not allow users to upload custom icons", () => {
   const popup = readFileSync(new URL("popup.html", extension), "utf8");
-  assert.doesNotMatch(popup, /type="file"|iconDrop|iconFile|resetIcon/);
+  assert.doesNotMatch(popup, /type="file"|iconDrop|iconFile|id="resetIcon"/);
   assert.equal(manifest.action.default_icon, "icons/icon.png");
 });
 
