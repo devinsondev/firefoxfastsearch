@@ -10,6 +10,43 @@ let selectedId = null;
 let recordingId = null;
 let language = "ru";
 let saveChain = Promise.resolve();
+let selectionIconEnabled = true;
+let selectionIconAngle = globalThis.FastSearchIconPlacement.DEFAULT_ANGLE;
+let dialPointerId = null;
+
+function saveIconSettings() {
+  const snapshot = { selectionIconEnabled, selectionIconAngle };
+  saveChain = saveChain.catch(() => {}).then(() => browser.storage.local.set(snapshot));
+  saveChain.catch(error => notify(String(error), true));
+  return saveChain;
+}
+function renderIconSettings() {
+  const placement = globalThis.FastSearchIconPlacement;
+  const dial = $("iconDial");
+  const word = $("iconWord");
+  $("selectionIconEnabled").checked = selectionIconEnabled;
+  $("iconAngleValue").textContent = selectionIconAngle + "°";
+  dial.setAttribute("aria-valuenow", String(selectionIconAngle));
+  dial.setAttribute("aria-valuetext", selectionIconAngle + "°");
+  const dialRect = dial.getBoundingClientRect();
+  const wordRect = word.getBoundingClientRect();
+  if (dialRect.width && dialRect.height && wordRect.width && wordRect.height) {
+    const rect = {
+      left: wordRect.left - dialRect.left, top: wordRect.top - dialRect.top,
+      width: wordRect.width, height: wordRect.height,
+    };
+    const point = placement.position(rect, selectionIconAngle, dial.clientWidth, dial.clientHeight);
+    $("iconPreview").style.left = point.left + "px";
+    $("iconPreview").style.top = point.top + "px";
+  }
+  $("iconPreview").style.opacity = selectionIconEnabled ? "1" : ".45";
+}
+function setIconAngle(value, persist = false) {
+  selectionIconAngle = globalThis.FastSearchIconPlacement.normalizeAngle(value);
+  renderIconSettings();
+  if (persist) void saveIconSettings();
+}
+
 
 function t(key) { return translate(language, key); }
 function notify(message, error = false) {
@@ -73,7 +110,7 @@ function renderEditor() {
     (shortcutOf(profile.id) || t("emptyKey"));
   $("clearShortcut").disabled = !shortcutOf(profile.id);
 }
-function render() { applyLanguage(language); renderTabs(); renderEditor(); }
+function render() { applyLanguage(language); renderTabs(); renderEditor(); renderIconSettings(); }
 function cancelRecording() { recordingId = null; renderEditor(); }
 
 async function addProfile() {
@@ -113,6 +150,51 @@ async function changeShortcut(id, value) {
       String(error), true);
   }
 }
+
+$("selectionIconEnabled").addEventListener("change", event => {
+  selectionIconEnabled = event.target.checked;
+  renderIconSettings();
+  void saveIconSettings();
+});
+function iconAngleFromPointer(event) {
+  const rect = $("iconDial").getBoundingClientRect();
+  return globalThis.FastSearchIconPlacement.angleFromPoint(
+    event.clientX, event.clientY, rect.left + rect.width / 2, rect.top + rect.height / 2);
+}
+$("iconDial").addEventListener("pointerdown", event => {
+  if (event.button !== 0) return;
+  dialPointerId = event.pointerId;
+  $("iconDial").setPointerCapture(event.pointerId);
+  setIconAngle(iconAngleFromPointer(event));
+  event.preventDefault();
+});
+$("iconDial").addEventListener("pointermove", event => {
+  if (event.pointerId === dialPointerId) setIconAngle(iconAngleFromPointer(event));
+});
+$("iconDial").addEventListener("pointerup", event => {
+  if (event.pointerId !== dialPointerId) return;
+  setIconAngle(iconAngleFromPointer(event));
+  dialPointerId = null;
+  if ($("iconDial").hasPointerCapture(event.pointerId)) $("iconDial").releasePointerCapture(event.pointerId);
+  void saveIconSettings();
+});
+$("iconDial").addEventListener("pointercancel", event => {
+  if (event.pointerId !== dialPointerId) return;
+  dialPointerId = null;
+  void saveIconSettings();
+});
+$("iconDial").addEventListener("keydown", event => {
+  const step = event.shiftKey ? 15 : 5;
+  const next = event.key === "Home" ? 0 : event.key === "End" ? 359 :
+    ["ArrowRight", "ArrowDown"].includes(event.key) ? selectionIconAngle + step :
+    ["ArrowLeft", "ArrowUp"].includes(event.key) ? selectionIconAngle - step : null;
+  if (next === null) return;
+  event.preventDefault();
+  setIconAngle(next, true);
+});
+$("resetIconAngle").addEventListener("click", () =>
+  setIconAngle(globalThis.FastSearchIconPlacement.DEFAULT_ANGLE, true));
+window.addEventListener("resize", renderIconSettings);
 
 $("addProfile").addEventListener("click", () => void addProfile());
 $("removeProfile").addEventListener("click", () => void removeProfile());
@@ -215,6 +297,13 @@ browser.storage.onChanged.addListener((changes, area) => {
     language = changes.uiLanguage.newValue;
     render();
   }
+  if (changes.selectionIconEnabled || changes.selectionIconAngle) {
+    if (changes.selectionIconEnabled) selectionIconEnabled = changes.selectionIconEnabled.newValue !== false;
+    if (changes.selectionIconAngle && dialPointerId === null) {
+      selectionIconAngle = globalThis.FastSearchIconPlacement.normalizeAngle(changes.selectionIconAngle.newValue);
+    }
+    renderIconSettings();
+  }
   if (changes.profiles && !document.hasFocus()) {
     const incoming = normalizeProfiles(changes.profiles.newValue);
     if (!incoming) return;
@@ -227,9 +316,11 @@ browser.commands.onChanged.addListener(() => void loadCommands().then(render));
 window.addEventListener("focus", () => { if (!recordingId) void loadCommands().then(render); });
 
 void (async () => {
-  const settings = await browser.storage.local.get(["profiles", "searchEngine", "uiLanguage"]);
+  const settings = await browser.storage.local.get(["profiles", "searchEngine", "uiLanguage", "selectionIconEnabled", "selectionIconAngle"]);
   language = ["ru", "en"].includes(settings.uiLanguage) ? settings.uiLanguage :
     (browser.i18n.getUILanguage().toLowerCase().startsWith("ru") ? "ru" : "en");
+  selectionIconEnabled = settings.selectionIconEnabled !== false;
+  selectionIconAngle = globalThis.FastSearchIconPlacement.normalizeAngle(settings.selectionIconAngle);
   await loadCommands();
   const stored = normalizeProfiles(settings.profiles);
   profiles = stored ?? initialProfiles(settings.searchEngine, commands);

@@ -7,6 +7,7 @@ Search selected webpage text with a hotkey. Results open in a new active or back
 ## Features
 
 - **Compact toolbar popup:** click the extension icon to add/edit tabs, engines, shortcuts and foreground/background mode. Use **Full settings** to open the original spacious settings page; neither view replaces the other. Changes use the same local profiles.
+- **Selection icon:** choose whether a search button appears when text is selected. Drag its 360° position dial in either settings view. Clicking it searches with the first profile.
 - **F1** defaults to searching Google in a new active tab.
 - **+** adds a profile tab with its own shortcut, search provider, and tab mode (up to 16 independent profiles).
 - Search providers: Google, DuckDuckGo, Yandex, Bing, or a user-defined HTTPS URL with `{query}` placeholder.
@@ -16,9 +17,9 @@ Search selected webpage text with a hotkey. Results open in a new active or back
 
 ## Data transmission — read before use
 
-Pressing a search shortcut reads the selected text and navigates to the chosen search provider. **That text is sent to the search provider** as part of a URL; it can appear in Firefox history and the provider's logs. Do not search passwords, access tokens, or other secrets. Custom search URLs are controlled by the user.
+With the selection icon enabled, a local content script observes webpage selections to place the button. Clicking it or pressing a search shortcut reads the selected text and navigates to the chosen search provider. **That text is sent to the search provider** as part of a URL; it can appear in Firefox history and the provider's logs. Do not search passwords, access tokens, or other secrets. Custom search URLs are controlled by the user.
 
-The extension keeps search profiles and language settings locally. Firefox manages shortcut assignments. It does not send collected queries to developer-operated servers. See [PRIVACY.md](PRIVACY.md) and [DISCLAIMER.md](DISCLAIMER.md) (English and Russian) and the built-in **Privacy & Legal** page in Settings. The project is independent of Mozilla and search providers.
+The extension keeps search profiles, language settings, and the icon visibility/angle locally. Firefox manages shortcut assignments. It does not send collected queries to developer-operated servers. See [PRIVACY.md](PRIVACY.md) and [DISCLAIMER.md](DISCLAIMER.md) (English and Russian) and the built-in **Privacy & Legal** page in Settings. The project is independent of Mozilla and search providers.
 
 Firefox 140+ is required for Mozilla's built-in data transmission consent. The manifest declares required `searchTerms` and `websiteContent` because selected webpage text is sent to the chosen search provider as a search query. This declaration is **not** a claim that the developer collects queries on their own servers.
 
@@ -27,7 +28,7 @@ Firefox 140+ is required for Mozilla's built-in data transmission consent. The m
 1. Download or clone the repository.
 2. Open `about:debugging#/runtime/this-firefox` in Firefox 140+.
 3. Click **Load Temporary Add-on** and choose `extension/manifest.json`.
-4. Select webpage text and press `F1`; click the add-on icon for the compact popup. Choose **Full settings** for the existing full-page editor.
+4. Select webpage text and click the floating button, or press `F1`; click the add-on icon for the compact popup. Choose **Full settings** for the existing full-page editor.
 
 Temporary add-ons disappear when Firefox restarts. To publish permanently, submit the built extension ZIP to Mozilla Add-ons for signing and review. Existing saved profiles and shortcuts are retained when upgrading the extension under the same ID: `firefoxfastsearch@devinsondev`. Version 1.2+ deletes any icon override previously saved by version 1.1. Firefox 139 and older are no longer supported.
 
@@ -36,7 +37,7 @@ Temporary add-ons disappear when Firefox restarts. To publish permanently, submi
 Run this in **PowerShell**, at the repository root:
 
 ```powershell
-Compress-Archive -Path .\extension\* -DestinationPath .\firefoxfastsearch-1.3.0.zip -Force
+Compress-Archive -Path .\extension\* -DestinationPath .\firefoxfastsearch-1.3.1.zip -Force
 ```
 
 The ZIP must contain `manifest.json` at the archive root. You can alternatively run `python scripts/package.py` for a deterministic, extension-only ZIP in `dist/`. Neither npm nor Python is required **to use** the add-on.

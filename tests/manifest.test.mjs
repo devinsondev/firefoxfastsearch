@@ -33,7 +33,7 @@ test("runtime image uploads are removed, while bundled icon remains", () => {
   const html = readFileSync(new URL("options.html", extension), "utf8");
   const options = readFileSync(new URL("options.js", extension), "utf8");
   const background = readFileSync(new URL("background.js", extension), "utf8");
-  assert.doesNotMatch(html, /type="file"|iconDrop|iconFile|resetIcon/);
+  assert.doesNotMatch(html, /type="file"|iconDrop|iconFile|id="resetIcon"/);
   assert.doesNotMatch(options, /setupIconPicker|icon-picker/);
   assert.doesNotMatch(background, /applyToolbarIcon|storage\.onChanged/);
   assert.match(background, /remove\("toolbarIcon"\)/);
@@ -80,6 +80,18 @@ test("popup labels are localized in both languages", () => {
 });
 test("popup does not allow users to upload custom icons", () => {
   const popup = readFileSync(new URL("popup.html", extension), "utf8");
-  assert.doesNotMatch(popup, /type="file"|iconDrop|iconFile|resetIcon/);
+  assert.doesNotMatch(popup, /type="file"|iconDrop|iconFile|id="resetIcon"/);
   assert.equal(manifest.action.default_icon, "icons/icon.png");
+});
+
+test("optional on-selection search icon runs on webpages and has shared controls", () => {
+  const script = manifest.content_scripts[0];
+  assert.deepEqual(script.matches, ["http://*/*", "https://*/*"]);
+  assert.deepEqual(script.js, ["core/icon-placement.js", "selection-icon.js"]);
+  assert.equal(script.all_frames, true);
+  for (const file of ["options.html", "popup.html"]) {
+    const html = readFileSync(new URL(file, extension), "utf8");
+    for (const id of ["selectionIconEnabled", "iconDial", "iconPreview", "iconAngleValue"])
+      assert.ok(html.includes('id="' + id + '"'), file + ": " + id);
+  }
 });
