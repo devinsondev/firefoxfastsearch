@@ -9,7 +9,7 @@ Search selected webpage text with a hotkey. Results open in a new active/backgro
 - **Compact toolbar popup:** click the extension icon to add/edit tabs, engines, shortcuts and foreground/background mode. Use **Full settings** to open the original spacious settings page; neither view replaces the other. Changes use the same local profiles.
 - **F1** searches Google in a new active tab; **F2** searches all configured multi-search sites using your chosen multi-search display mode.
 - **Ctrl+Alt+X** (default) closes **all windows created by multi-search**, including tiled popup windows or the single multi-tab window. Ordinary Firefox windows and the source webpage remain open. Change or disable this shortcut under **Multi-search → Close all windows shortcut** in either the toolbar popup or full settings. Firefox/OS reserved shortcuts may need a different key combination.
-- **Configurable selection icon:** show/hide the floating magnifier, place it anywhere around the selected text with the 360° drag dial, and choose its click action: **Multi-search** (default) or **First search profile**. Available in the popup and full settings.
+- **Configurable selection icon:** show/hide the floating magnifier and choose **Multi-search** (default) or **First search profile** from either settings view. Adjust its precise **360° position only in Full Settings**; the toolbar popup keeps the simple controls.
 - Multi-search starts with Google, Yandex, Bing, and DuckDuckGo. Edit, remove, reorder (by deleting/re-adding), or add custom HTTPS search URL templates in the toolbar or full settings; up to 16 sites are supported.
 - **Multi-search display mode:** choose **Separate tiled windows** (default) or **One window with tabs** in the toolbar popup or full settings. The tabbed mode opens each search provider as a real Firefox tab in one new normal browser window, without using iframes or APIs.
 - **Firefox Split View (manual):** Firefox supports displaying two existing tabs side by side. In **One window with tabs** mode, you can select a pair of tabs yourself, right-click, and choose **Open in Split View**. Firefox currently offers no published WebExtension API to automate this, so the add-on does not show a misleading Split View checkbox.
@@ -56,7 +56,7 @@ py -3 .\scripts\package.py
 py -3 .\scripts\verify_package.py
 ```
 
-**Upload `dist/firefoxfastsearch-1.5.5.zip`**, not a stale 1.5.2 ZIP or a zipped GitHub Actions artifact wrapper.
+**Upload `dist/firefoxfastsearch-1.5.6.zip`**, not a stale 1.5.2 ZIP or a zipped GitHub Actions artifact wrapper.
 Both builders use forward-slash ZIP entry names (e.g. `core/command-router.js`),
 place `manifest.json` at the archive root, and reject invalid ZIP structure.
 GitHub Actions builds and checks the ZIP independently on Linux and Windows.
