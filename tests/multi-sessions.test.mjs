@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ALARM_PREFIX, normalizeAutoCloseSeconds, MAX_AUTO_CLOSE_SECONDS,
-  registerMultiSession, multiSessionForWindow, closeMultiSession,
-  forgetMultiWindow, closeAllMultiSessions } from "../extension/core/multi-sessions.js";
+  registerMultiSession, appendMultiSessionWindow, isMultiSessionActive,
+  multiSessionForWindow, closeMultiSession, forgetMultiWindow,
+  closeAllMultiSessions } from "../extension/core/multi-sessions.js";
 
 function mockBrowser() {
   const data = {};
@@ -96,4 +97,17 @@ test("originating tab may close only the matching managed group", async () => {
   assert.ok(notices.some(({ id, message }) =>
     id === 77 && message.action === "multiSessionClosed"));
   assert.ok(await multiSessionForWindow(api, 200));
+});
+
+test("search windows join a live session immediately and cannot rejoin after closing", async () => {
+  const { api, data, removed } = mockBrowser();
+  await registerMultiSession(api, { id: "multi-early", windowIds: [11] });
+  assert.equal(await isMultiSessionActive(api, "multi-early"), true);
+  assert.equal(await appendMultiSessionWindow(api, "multi-early", 12), true);
+  assert.deepEqual(data.multiSearchSessions[0].windowIds, [11, 12]);
+  await closeAllMultiSessions(api);
+  assert.deepEqual(removed.sort((a, b) => a - b), [11, 12]);
+  assert.equal(await isMultiSessionActive(api, "multi-early"), false);
+  assert.equal(await appendMultiSessionWindow(api, "multi-early", 13), false);
+  assert.deepEqual(data.multiSearchSessions, []);
 });

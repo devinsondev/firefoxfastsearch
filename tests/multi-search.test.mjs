@@ -122,13 +122,14 @@ test("reapplies the four exact screen quadrants after all windows are created", 
     alarms: { create: async () => {} },
   };
   assert.equal((await openMultiSearch(api)).opened, 4);
-  assert.equal(updated.length, 9, "the final update must focus the first popup");
-  assert.deepEqual(updated.slice(0, 4).map(({ width, height }) =>
+  assert.equal(updated.length, 12, "focus requests happen before delayed geometry updates");
+  assert.deepEqual(updated.slice(0, 4), Array.from({ length: 4 },
+    () => ({ id: 101, focused: true })));
+  assert.deepEqual(updated.slice(4, 8).map(({ width, height }) =>
     ({ width, height })), tileWindows(area, 4).map(({ width, height }) => ({ width, height })));
-  assert.deepEqual(updated.slice(4, 8).map(({ left, top }) =>
+  assert.deepEqual(updated.slice(8, 12).map(({ left, top }) =>
     ({ left, top })), tileWindows(area, 4).map(({ left, top }) => ({ left, top })));
   assert.deepEqual(store.multiSearchSessions[0].windowIds, [101, 102, 103, 104]);
-  assert.deepEqual(updated.at(-1), { id: 101, focused: true });
 });
 test("retries positioning when the window manager reports shifted bounds", async () => {
   const tile = { left: 0, top: 0, width: 800, height: 480 };
