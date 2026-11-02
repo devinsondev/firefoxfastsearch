@@ -16,18 +16,19 @@ let selectionIconAction = "multi";
 let selectionIconAngle = globalThis.FastSearchIconPlacement.DEFAULT_ANGLE;
 let dialPointerId = null;
 
-function saveIconSettings() {
-  const snapshot = { selectionIconEnabled, selectionIconAngle, selectionIconAction };
+function saveIconSettings(changes) {
+  const snapshot = { ...changes };
   saveChain = saveChain.catch(() => {}).then(() => browser.storage.local.set(snapshot));
   saveChain.catch(error => notify(String(error), true));
   return saveChain;
 }
 function renderIconSettings() {
-  const placement = globalThis.FastSearchIconPlacement;
-  const dial = $("iconDial");
-  const word = $("iconWord");
   $("selectionIconEnabled").checked = selectionIconEnabled;
   $("selectionIconAction").value = selectionIconAction;
+  const dial = $("iconDial");
+  if (!dial) return; // The 360° dial is available only in Full Settings.
+  const placement = globalThis.FastSearchIconPlacement;
+  const word = $("iconWord");
   $("iconAngleValue").textContent = selectionIconAngle + "°";
   dial.setAttribute("aria-valuenow", String(selectionIconAngle));
   dial.setAttribute("aria-valuetext", selectionIconAngle + "°");
@@ -47,7 +48,7 @@ function renderIconSettings() {
 function setIconAngle(value, persist = false) {
   selectionIconAngle = globalThis.FastSearchIconPlacement.normalizeAngle(value);
   renderIconSettings();
-  if (persist) void saveIconSettings();
+  if (persist) void saveIconSettings({ selectionIconAngle });
 }
 
 
@@ -157,51 +158,54 @@ async function changeShortcut(id, value) {
 $("selectionIconEnabled").addEventListener("change", event => {
   selectionIconEnabled = event.target.checked;
   renderIconSettings();
-  void saveIconSettings();
+  void saveIconSettings({ selectionIconEnabled });
 });
 $("selectionIconAction").addEventListener("change", event => {
   selectionIconAction = event.target.value === "single" ? "single" : "multi";
-  void saveIconSettings();
+  void saveIconSettings({ selectionIconAction });
 });
-function iconAngleFromPointer(event) {
-  const rect = $("iconDial").getBoundingClientRect();
-  return globalThis.FastSearchIconPlacement.angleFromPoint(
-    event.clientX, event.clientY, rect.left + rect.width / 2, rect.top + rect.height / 2);
+// The shared controller also powers the compact popup, where there is no angle dial.
+if ($("iconDial")) {
+  function iconAngleFromPointer(event) {
+    const rect = $("iconDial").getBoundingClientRect();
+    return globalThis.FastSearchIconPlacement.angleFromPoint(
+      event.clientX, event.clientY, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }
+  $("iconDial").addEventListener("pointerdown", event => {
+    if (event.button !== 0) return;
+    dialPointerId = event.pointerId;
+    $("iconDial").setPointerCapture(event.pointerId);
+    setIconAngle(iconAngleFromPointer(event));
+    event.preventDefault();
+  });
+  $("iconDial").addEventListener("pointermove", event => {
+    if (event.pointerId === dialPointerId) setIconAngle(iconAngleFromPointer(event));
+  });
+  $("iconDial").addEventListener("pointerup", event => {
+    if (event.pointerId !== dialPointerId) return;
+    setIconAngle(iconAngleFromPointer(event));
+    dialPointerId = null;
+    if ($("iconDial").hasPointerCapture(event.pointerId)) $("iconDial").releasePointerCapture(event.pointerId);
+    void saveIconSettings({ selectionIconAngle });
+  });
+  $("iconDial").addEventListener("pointercancel", event => {
+    if (event.pointerId !== dialPointerId) return;
+    dialPointerId = null;
+    void saveIconSettings({ selectionIconAngle });
+  });
+  $("iconDial").addEventListener("keydown", event => {
+    const step = event.shiftKey ? 15 : 5;
+    const next = event.key === "Home" ? 0 : event.key === "End" ? 359 :
+      ["ArrowRight", "ArrowDown"].includes(event.key) ? selectionIconAngle + step :
+      ["ArrowLeft", "ArrowUp"].includes(event.key) ? selectionIconAngle - step : null;
+    if (next === null) return;
+    event.preventDefault();
+    setIconAngle(next, true);
+  });
+  $("resetIconAngle").addEventListener("click", () =>
+    setIconAngle(globalThis.FastSearchIconPlacement.DEFAULT_ANGLE, true));
+  window.addEventListener("resize", renderIconSettings);
 }
-$("iconDial").addEventListener("pointerdown", event => {
-  if (event.button !== 0) return;
-  dialPointerId = event.pointerId;
-  $("iconDial").setPointerCapture(event.pointerId);
-  setIconAngle(iconAngleFromPointer(event));
-  event.preventDefault();
-});
-$("iconDial").addEventListener("pointermove", event => {
-  if (event.pointerId === dialPointerId) setIconAngle(iconAngleFromPointer(event));
-});
-$("iconDial").addEventListener("pointerup", event => {
-  if (event.pointerId !== dialPointerId) return;
-  setIconAngle(iconAngleFromPointer(event));
-  dialPointerId = null;
-  if ($("iconDial").hasPointerCapture(event.pointerId)) $("iconDial").releasePointerCapture(event.pointerId);
-  void saveIconSettings();
-});
-$("iconDial").addEventListener("pointercancel", event => {
-  if (event.pointerId !== dialPointerId) return;
-  dialPointerId = null;
-  void saveIconSettings();
-});
-$("iconDial").addEventListener("keydown", event => {
-  const step = event.shiftKey ? 15 : 5;
-  const next = event.key === "Home" ? 0 : event.key === "End" ? 359 :
-    ["ArrowRight", "ArrowDown"].includes(event.key) ? selectionIconAngle + step :
-    ["ArrowLeft", "ArrowUp"].includes(event.key) ? selectionIconAngle - step : null;
-  if (next === null) return;
-  event.preventDefault();
-  setIconAngle(next, true);
-});
-$("resetIconAngle").addEventListener("click", () =>
-  setIconAngle(globalThis.FastSearchIconPlacement.DEFAULT_ANGLE, true));
-window.addEventListener("resize", renderIconSettings);
 
 $("addProfile").addEventListener("click", () => void addProfile());
 $("removeProfile").addEventListener("click", () => void removeProfile());

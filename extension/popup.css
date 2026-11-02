@@ -60,16 +60,7 @@ footer a{color:var(--accent-hover);font-size:11px;white-space:nowrap}
 .icon-switch{gap:10px;padding:9px 10px;border-radius:9px}
 .icon-switch strong{font-size:11px}
 .icon-switch small{font-size:10px;line-height:1.4}
-.icon-position-settings{margin-top:12px}
-.icon-position-heading h3{font-size:12px}
-.icon-position-heading output{font-size:14px}
-.icon-position-layout{gap:10px;margin-top:7px;flex-wrap:nowrap}
-.icon-dial{width:180px;height:150px;border-radius:10px}
-.dial-word{font-size:13px;padding:3px 6px}
-.dial-track{width:112px;height:87px}
-.icon-position-notes{min-width:0;flex:1;gap:6px}
-.icon-position-notes p{font-size:10px;line-height:1.4}
-.icon-position-notes .quiet{font-size:10px;margin:0;padding:4px 0}
+.selection-settings .icon-position-hint{font-size:10px;line-height:1.4;margin-top:8px}
 
 .selection-settings .icon-action-field{gap:8px;align-items:center;flex-direction:row;margin-top:10px}
 .selection-settings .icon-action-field>span{font-size:10px;max-width:105px}

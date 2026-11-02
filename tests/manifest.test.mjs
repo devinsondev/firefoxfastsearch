@@ -113,18 +113,28 @@ test("optional close button access is restricted to bundled search providers", (
   assert.ok(!manifest.optional_host_permissions.includes("<all_urls>"));
 });
 
-test("selection icon and multi-search controls coexist", () => {
+test("selection icon controls stay in both views, but angle dial is full-settings-only", () => {
   const popup = readFileSync(new URL("popup.html", extension), "utf8");
   const settings = readFileSync(new URL("options.html", extension), "utf8");
   for (const html of [popup, settings]) {
-    for (const id of ["selectionIconEnabled", "selectionIconAction", "iconDial", "iconPreview", "iconAngleValue"]) {
+    for (const id of ["selectionIconEnabled", "selectionIconAction"]) {
       assert.ok(html.includes('id="' + id + '"'), "Missing icon control: " + id);
     }
   }
+  for (const id of ["iconDial", "iconWord", "iconPreview", "iconAngleValue", "resetIconAngle"]) {
+    assert.ok(settings.includes('id="' + id + '"'), "Full settings missing dial control: " + id);
+    assert.ok(!popup.includes('id="' + id + '"'), "Popup must not expose dial control: " + id);
+  }
+  assert.match(popup, /data-i18n="iconPositionFullHint"/);
+  assert.match(settings, /class="icon-position-settings"/);
+  assert.doesNotMatch(popup, /class="icon-position-settings"/);
   const options = readFileSync(new URL("options.js", extension), "utf8");
   assert.match(options, /initMultiUI/);
-  assert.match(options, /selectionIconAngle/);
-  assert.match(options, /selectionIconAction/);
+  assert.match(options, /if \(!dial\) return/);
+  assert.match(options, /if \(\$\("iconDial"\)\) \{/);
+  assert.match(options, /saveIconSettings\(\{ selectionIconEnabled \}\)/);
+  assert.match(options, /saveIconSettings\(\{ selectionIconAction \}\)/);
+  assert.match(options, /saveIconSettings\(\{ selectionIconAngle \}\)/);
   const icon = readFileSync(new URL("selection-icon.js", extension), "utf8");
   assert.match(icon, /action: "multiSearch"/);
   assert.match(icon, /type: "fast-search:selection-icon"/);
