@@ -10,7 +10,7 @@ Fast Search for Firefox searches selected webpage text with a single configurabl
 
 **Privacy:** While the optional icon is enabled, webpage selections are observed locally to position it, but selecting alone sends nothing. Click the icon or use a shortcut to send selected text as a search query to each selected search provider opened and may appear in browser history. This add-on has no analytics or developer-controlled search server. Avoid selecting secrets. See the privacy policy and legal notice below.
 
-The official toolbar icon remains fixed; the floating selection icon can be hidden, rotated around the text through 360°, or configured for multi-search or first-profile search. User-uploaded icons are not supported. This is an independent project, not endorsed by Mozilla or the listed search providers. Provided “AS IS” to the extent permitted by law; mandatory consumer rights remain unaffected.
+The optional search-site permission for in-page Close all controls is requested only from Full Settings. Multi-search starts using F2 or the configured selection icon; a Close all action remains available in both settings views. The official toolbar icon remains fixed; the floating selection icon can be hidden, rotated around the text through 360°, or configured for multi-search or first-profile search. User-uploaded icons are not supported. This is an independent project, not endorsed by Mozilla or the listed search providers. Provided “AS IS” to the extent permitted by law; mandatory consumer rights remain unaffected.
 
 ## Описание на русском
 
@@ -18,7 +18,7 @@ Fast Search for Firefox запускает поиск по выделенном�
 
 **Конфиденциальность:** Включённая иконка отслеживает выделение локально только для размещения возле текста, не передавая запрос автоматически. После нажатия иконки или горячей клавиши текст отправляется каждому открытому поисковику и может остаться в истории браузера. Аналитики и сервера разработчика нет. Не отправляйте пароли и секретные данные. Подробнее — в политике конфиденциальности и правовом уведомлении.
 
-Официальная иконка на панели фиксирована, а плавающую иконку выделения можно отключить, переместить вокруг слова на 360° и настроить для мультипоиска или первого профиля. Произвольные изображения загружать нельзя. Независимый проект, не одобренный Mozilla или поисковиками. Расширение предоставляется «как есть» в рамках закона; обязательные права потребителей сохраняются.
+Дополнительное разрешение для кнопок «Закрыть все» внутри поисковиков запрашивается только в полных настройках. Мультипоиск запускается через F2 или настраиваемую иконку, а закрыть окна можно из любой панели настроек. Официальная иконка на панели фиксирована, а плавающую иконку выделения можно отключить, переместить вокруг слова на 360° и настроить для мультипоиска или первого профиля. Произвольные изображения загружать нельзя. Независимый проект, не одобренный Mozilla или поисковиками. Расширение предоставляется «как есть» в рамках закона; обязательные права потребителей сохраняются.
 
 ## Links for AMO submission
 
