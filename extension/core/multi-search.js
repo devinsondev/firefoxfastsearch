@@ -1,6 +1,7 @@
 import { buildSearchUrl, SEARCH_ENGINES } from "./profiles.js";
 import { readSelection } from "./selection.js";
-import { normalizeAutoCloseSeconds, registerMultiSession } from "./multi-sessions.js";
+import { appendMultiSessionWindow, isMultiSessionActive,
+  normalizeAutoCloseSeconds, registerMultiSession } from "./multi-sessions.js";
 
 export const MULTI_COMMAND = "search-multi";
 export const MAX_MULTI_TARGETS = 16;
@@ -246,17 +247,54 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds, ou
   let failed = 0;
   let skipped = 0;
   let constrained = 0;
+  let session = null;
+
+  // Register the group as soon as its FIRST window exists. The close shortcut
+  // must work while other windows are still opening or being laid out.
+  async function keepWindow(window) {
+    if (!Number.isInteger(window?.id)) return false;
+    if (!session) {
+      const seconds = normalizeAutoCloseSeconds(settings.multiAutoCloseSeconds);
+      session = {
+        id: `multi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`,
+        windowIds: [window.id], sourceTabId: sourceTab.id,
+        expiresAt: seconds ? Date.now() + seconds * 1000 : null,
+        language: settings.uiLanguage || "en",
+      };
+      try {
+        if (!await registerMultiSession(api, session)) throw new Error("not registered");
+      } catch (error) {
+        console.warn("Fast Search: could not register multi-search group", error);
+        session = null;
+        await api.windows.remove?.(window.id).catch(() => {});
+        return false;
+      }
+    } else if (!await appendMultiSessionWindow(api, session.id, window.id)) {
+      // Ctrl+Alt+F2 may have closed the group during windows.create().
+      // Destroy that late window instead of leaving it orphaned.
+      await api.windows.remove?.(window.id).catch(() => {});
+      return false;
+    }
+    openedWindows.push(window);
+    // Activate immediately, BEFORE the delayed tile correction and before
+    // any search page or Close all overlay has finished loading.
+    if (typeof api.windows?.update === "function" &&
+        await isMultiSessionActive(api, session.id)) {
+      for (const first of openedWindows) {
+        try { await api.windows.update(first.id, { focused: true }); break; }
+        catch { /* A window can be manually closed during startup. */ }
+      }
+    }
+    return true;
+  }
+
   if (mode === "tabs") {
-    // One normal Firefox window: one genuine search website per browser tab.
-    // A popup type would hide browser chrome, including the tab strip.
     const urls = targets.map(target => buildSearchUrl(target, text));
     try {
       const window = await api.windows.create({
         type: "normal", focused: true, url: urls, ...tabbedWindowBounds(area),
       });
-      if (Number.isInteger(window?.id)) {
-        openedWindows = [window];
-      } else failed = 1;
+      if (!await keepWindow(window)) failed = 1;
     } catch (error) {
       failed = 1;
       console.warn("Fast Search: could not open tabbed search window", error);
@@ -265,51 +303,40 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds, ou
     if (!area) return { opened: 0, requested: targets.length, mode, reason: "noScreen" };
     const tiles = tileWindows(area, targets.length);
     skipped = targets.length - tiles.length;
-    // Sequential creation prevents Firefox/Windows from overriding earlier popup
-    // geometry while several new windows initialize at the same instant.
     const placed = [];
     for (const [index, tile] of tiles.entries()) {
+      // The shortcut may have closed the group while the prior window opened.
+      if (session && !await isMultiSessionActive(api, session.id)) break;
       try {
         const window = await api.windows.create({
           url: buildSearchUrl(targets[index], text), type: "popup",
-          focused: placed.length === 0, ...tile,
+          focused: openedWindows.length === 0, ...tile,
         });
-        if (Number.isInteger(window?.id)) placed.push({ window, tile });
-        else failed++;
+        if (!Number.isInteger(window?.id)) { failed++; continue; }
+        if (!await keepWindow(window)) break;
+        placed.push({ windowId: window.id, tile });
       } catch (error) {
         failed++;
         console.warn("Fast Search: could not create tiled window", error);
       }
     }
-    openedWindows = placed.map(item => item.window);
-    constrained = (await settleTiledWindows(api, placed.map(({ window, tile }) =>
-      ({ windowId: window.id, tile })))).length;
+    // This slow correction must never block initial keyboard focus or the
+    // close-all command, which were already enabled by keepWindow().
+    if (session && await isMultiSessionActive(api, session.id)) {
+      constrained = (await settleTiledWindows(api, placed)).length;
+    }
   }
 
-  if (openedWindows.length) {
-    const seconds = normalizeAutoCloseSeconds(settings.multiAutoCloseSeconds);
-    const session = {
-      id: `multi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`,
-      windowIds: openedWindows.map(window => window.id),
-      sourceTabId: sourceTab.id,
-      expiresAt: seconds ? Date.now() + seconds * 1000 : null,
-      language: settings.uiLanguage || "en",
-    };
+  if (session && await isMultiSessionActive(api, session.id)) {
+    // Content-script notifications are optional enhancements: keyboard
+    // closing works independently from these page overlays.
     try {
-      await registerMultiSession(api, session);
-      // Keep a close button on the originating page, even if the search
-      // provider doesn't grant access for content scripts.
       if (typeof api.tabs.sendMessage === "function") {
         await api.tabs.sendMessage(sourceTab.id, {
           action: "multiSourceControl", session: {
             id: session.id, expiresAt: session.expiresAt, language: session.language,
           },
         }).catch(() => {});
-      }
-      // Firefox does not always populate window.tabs in windows.create().
-      // Look up tabs explicitly. If a content script is still loading, the
-      // background's tabs.onUpdated listener will notify it on completion.
-      if (typeof api.tabs.sendMessage === "function") {
         await Promise.allSettled(openedWindows.map(async window => {
           const tabs = await api.tabs.query({ windowId: window.id });
           await Promise.allSettled(tabs
@@ -318,22 +345,7 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds, ou
         }));
       }
     } catch (error) {
-      console.warn("Fast Search: could not register multi-search window group", error);
-    }
-  }
-
-  // Window placement and content messages may alter z-order. Put one search
-  // window in front *last*, so the close-all shortcut works without a click.
-  // The first successful window is the first configured provider (Google by default).
-  if (openedWindows.length && typeof api.windows?.update === "function") {
-    for (const opened of openedWindows) {
-      try {
-        await api.windows.update(opened.id, { focused: true });
-        break;
-      } catch (error) {
-        // The user may have closed a window during creation. Try the next.
-        console.warn("Fast Search: could not focus search window", opened.id, error);
-      }
+      console.warn("Fast Search: could not notify search pages", error);
     }
   }
 

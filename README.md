@@ -14,7 +14,7 @@ Search selected webpage text with a hotkey. Results open in a new active/backgro
 - **Multi-search display mode:** choose **Separate tiled windows** (default) or **One window with tabs** in the toolbar popup or full settings. The tabbed mode opens each search provider as a real Firefox tab in one new normal browser window, without using iframes or APIs.
 - **Firefox Split View (manual):** Firefox supports displaying two existing tabs side by side. In **One window with tabs** mode, you can select a pair of tabs yourself, right-click, and choose **Open in Split View**. Firefox currently offers no published WebExtension API to automate this, so the add-on does not show a misleading Split View checkbox.
 - **Close controls:** After starting multi-search, the original webpage also receives a floating **Close all** button; this works without access to search engine pages when the original content script is available. In Multi-search settings, uncheck **Show Close all button inside search windows** to hide the overlay on results pages (including already-open pages). The source-page control, global close button and **Ctrl+Alt+F2** shortcut still work. To show a button inside results pages, enable the checkbox and grant search-site access using **Enable Close all buttons on search engines**. Custom sites may require separate site access.
-- **Immediate focus after F2:** the first successfully opened search window (Google by default) is focused, and re-focused after all tiles are placed. Closing with **Ctrl+Alt+F2** works from a focused search window without clicking the page. Window managers may limit focus changes.
+- **Immediate focus and closing during F2 startup:** the first successfully opened search window (Google by default) is registered for closing and focused as soon as it is created. Focus is restored after each additional popup is created; you can press **Ctrl+Alt+F2** without waiting for tile corrections or Close all overlays. If the shortcut is pressed while another popup is still opening, that late popup is closed and the remaining popups are not launched. Window managers may limit focus changes.
 - In tiled mode, screen dimensions are calibrated to Firefox's own window coordinates (from the source window rather than untrusted page-only `screen.availWidth` values). For a maximized source window, Firefox's measured window rectangle is used directly. Windows open sequentially with separate resize/move operations and a post-load correction. Tiles are equal-sized and odd final rows are centered. If the OS enforces a larger minimum size, a warning with expected/actual bounds appears in the extension debugger.
 - A top-centered **Close all** button appears on accessible managed search pages and on the starting page. This control closes only the associated group of windows. In tabbed mode it closes the whole created window with all its tabs. The **Ctrl+Alt+F2** command and settings button close all managed groups without needing site permissions.
 - Set a **custom auto-close delay in whole seconds** (1–86400, maximum 24 hours), or use **0 to disable** it (the default). Windows are tracked per browser session. Auto-close uses browser alarms plus a page timer for responsive closing; timing can be delayed by browser or OS scheduling.
@@ -53,11 +53,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package.ps1
 Or use the cross-platform Python builder:
 
 ```powershell
-py -3 .\scripts\package.py
-py -3 .\scripts\verify_package.py
+python .\scripts\package.py
+python .\scripts\verify_package.py
 ```
 
-**Upload `dist/firefoxfastsearch-1.5.7.zip`**, not a stale 1.5.2 ZIP or a zipped GitHub Actions artifact wrapper.
+**Upload `dist/firefoxfastsearch-1.5.8.zip`**, not a stale 1.5.2 ZIP or a zipped GitHub Actions artifact wrapper.
 Both builders use forward-slash ZIP entry names (e.g. `core/command-router.js`),
 place `manifest.json` at the archive root, and reject invalid ZIP structure.
 GitHub Actions builds and checks the ZIP independently on Linux and Windows.

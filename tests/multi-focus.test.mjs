@@ -48,14 +48,15 @@ const launch = api => openMultiSearch(api, {
   screenBounds: area, outerBounds: area,
 });
 
-test("after F2, first popup gets focus after the last placement and notification", async () => {
+test("first popup receives focus during creation, before other pages or overlays load", async () => {
   const { api, created, focusAttempts, events } = setup();
   const result = await launch(api);
   assert.equal(result.opened, 4);
   assert.deepEqual(created.map(item => item.focused), [true, false, false, false]);
-  assert.deepEqual(focusAttempts, [101]);
-  assert.equal(events.at(-1), "focused");
-  assert.ok(events.lastIndexOf("registered") < events.lastIndexOf("focused"));
+  assert.deepEqual(focusAttempts, [101, 101, 101, 101]);
+  assert.ok(events.indexOf("focused") < events.indexOf("notified"));
+  assert.ok(events.indexOf("focused") < events.indexOf("created", events.indexOf("created") + 1));
+  assert.equal(events.at(-1), "notified", "do not steal focus when buttons finish loading");
 });
 
 test("focus falls back to the next popup if the first one was closed", async () => {
@@ -68,7 +69,9 @@ test("focus falls back to the next popup if the first one was closed", async () 
     console.warn = originalWarn;
   }
   assert.equal(created.length, 4);
-  assert.deepEqual(focusAttempts, [101, 102]);
+  assert.equal(focusAttempts[0], 101);
+  assert.ok(focusAttempts.includes(102), "falls back to another open search window");
+  assert.equal(focusAttempts.at(-1), 102);
 });
 
 test("first successfully created popup receives initial focus after a creation failure", async () => {
@@ -83,5 +86,5 @@ test("first successfully created popup receives initial focus after a creation f
     console.warn = originalWarn;
   }
   assert.deepEqual(created.map(item => item.focused), [true, false, false]);
-  assert.deepEqual(focusAttempts, [102]);
+  assert.deepEqual(focusAttempts, [102, 102, 102]);
 });

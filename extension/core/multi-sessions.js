@@ -42,6 +42,29 @@ export async function registerMultiSession(api, session) {
   return true;
 }
 
+// Attach each newly opened window immediately, so Ctrl+Alt+F2 can close
+// the group while the remaining tiled windows are still being created.
+// Returning false means the user already closed the group.
+export async function appendMultiSessionWindow(api, sessionId, windowId) {
+  if (typeof sessionId !== "string" || !Number.isInteger(windowId)) return false;
+  return updateSessions(api, sessions => {
+    const active = sessions.find(item => item.id === sessionId);
+    if (!active) return { sessions, result: false };
+    const next = sessions.map(item => item === active
+      ? { ...item, windowIds: [...new Set([...item.windowIds, windowId])] } : item);
+    return { sessions: next, result: true };
+  });
+}
+
+// Wait for queued storage changes before deciding whether to launch the next window.
+export async function isMultiSessionActive(api, sessionId) {
+  if (typeof sessionId !== "string") return false;
+  await updates.catch(() => {});
+  const data = await api.storage.session.get(STORAGE_KEY);
+  return Array.isArray(data[STORAGE_KEY]) &&
+    data[STORAGE_KEY].some(item => item.id === sessionId);
+}
+
 export async function multiSessionForWindow(api, windowId) {
   if (!Number.isInteger(windowId)) return null;
   const data = await api.storage.session.get(STORAGE_KEY);

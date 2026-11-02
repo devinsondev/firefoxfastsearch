@@ -41,7 +41,7 @@ test("invalid geometry and unavailable browser measurements keep safe fallback",
 });
 
 test("multi-search uses the maximized source window for all four popup placements", async () => {
-  const created = [];
+  const created = [], store = {};
   const api = {
     tabs: { query: async () => [{ id: 9, windowId: 10 }] },
     windows: {
@@ -59,7 +59,8 @@ test("multi-search uses the maximized source window for all four popup placement
       } }],
     },
     storage: { local: { get: async () => ({ multiAutoCloseSeconds: 0 }) },
-      session: { get: async () => ({}), set: async () => {} } },
+      session: { get: async key => ({ [key]: store[key] }),
+        set: async entry => Object.assign(store, entry) } },
     alarms: { create: async () => {} },
   };
   const result = await openMultiSearch(api);
