@@ -25,7 +25,7 @@ const manifest = JSON.parse(readFileSync(join(extension, "manifest.json"), "utf8
 assert.equal(manifest.version, JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version);
 assert.equal(Object.keys(manifest.commands).length, 18);
 assert.equal(manifest.commands["search-foreground"].suggested_key.default, "F1");
-assert.equal(manifest.commands["close-multi-search"].suggested_key.default, "Ctrl+Alt+X");
+assert.equal(manifest.commands["close-multi-search"].suggested_key.default, "Ctrl+Alt+F2");
 assert.equal(manifest.action.default_popup, "popup.html");
 assert.equal(manifest.options_ui.page, "options.html");
 assert.ok(existsSync(join(extension, manifest.action.default_popup)));

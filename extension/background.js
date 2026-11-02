@@ -1,3 +1,4 @@
+import { migrateCloseShortcut } from "./core/close-shortcut-migration.js";
 import { runSearchCommand } from "./core/command-router.js";
 import { openMultiSearch } from "./core/multi-search.js";
 import { searchSelectionFromIcon } from "./core/search.js";
@@ -7,6 +8,13 @@ import { ALARM_PREFIX, closeAllMultiSessions, closeMultiSession,
 browser.commands.onCommand.addListener((command, tab) => {
   void runSearchCommand(browser, command, tab).catch(error =>
     console.warn("Fast Search: command failed", error));
+});
+
+// Keep an existing user's custom shortcut. Change only the old default
+// on upgrades from 1.5.6 or older; new installations use the manifest.
+browser.runtime.onInstalled.addListener(details => {
+  void migrateCloseShortcut(browser, details).catch(error =>
+    console.warn("Fast Search: could not migrate the close shortcut", error));
 });
 
 // Remove any icon uploaded in older versions. Only the bundled icon is supported.

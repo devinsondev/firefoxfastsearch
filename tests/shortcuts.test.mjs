@@ -46,11 +46,14 @@ test("shortcut can be cleared", async () => {
   assert.deepEqual(updated, { name: "search-foreground", shortcut: "" });
 });
 
-test("close-all shortcut can be remapped and respects F2 conflicts", async () => {
+test("Ctrl+Alt+F2 is accepted by the shortcut recorder", () => {
+  assert.equal(shortcutFromEvent(keyboard("F2", { ctrlKey: true, altKey: true })), "Ctrl+Alt+F2");
+});
+test("close-all defaults to Ctrl+Alt+F2 but can be remapped and respects F2 conflicts", async () => {
   const updates = [];
   const commands = [
     { name: "search-multi", shortcut: "F2" },
-    { name: "close-multi-search", shortcut: "Ctrl+Alt+X" },
+    { name: "close-multi-search", shortcut: "Ctrl+Alt+F2" },
   ];
   const api = { commands: {
     getAll: async () => commands,
