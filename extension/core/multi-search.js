@@ -271,7 +271,8 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds, ou
     for (const [index, tile] of tiles.entries()) {
       try {
         const window = await api.windows.create({
-          url: buildSearchUrl(targets[index], text), type: "popup", ...tile,
+          url: buildSearchUrl(targets[index], text), type: "popup",
+          focused: placed.length === 0, ...tile,
         });
         if (Number.isInteger(window?.id)) placed.push({ window, tile });
         else failed++;
@@ -318,6 +319,21 @@ export async function openMultiSearch(api, { tab, selectedText, screenBounds, ou
       }
     } catch (error) {
       console.warn("Fast Search: could not register multi-search window group", error);
+    }
+  }
+
+  // Window placement and content messages may alter z-order. Put one search
+  // window in front *last*, so the close-all shortcut works without a click.
+  // The first successful window is the first configured provider (Google by default).
+  if (openedWindows.length && typeof api.windows?.update === "function") {
+    for (const opened of openedWindows) {
+      try {
+        await api.windows.update(opened.id, { focused: true });
+        break;
+      } catch (error) {
+        // The user may have closed a window during creation. Try the next.
+        console.warn("Fast Search: could not focus search window", opened.id, error);
+      }
     }
   }
 

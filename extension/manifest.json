@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
   "description": "__MSG_extensionDescription__",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "default_locale": "en",
   "browser_specific_settings": {
     "gecko": {
@@ -103,7 +103,7 @@
     },
     "close-multi-search": {
       "suggested_key": {
-        "default": "Ctrl+Alt+X"
+        "default": "Ctrl+Alt+F2"
       },
       "description": "Close all Firefox Fast Search multi-search windows"
     }

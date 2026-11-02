@@ -83,6 +83,8 @@ test("four windows launch in order and auto-close uses user-supplied seconds", a
   assert.equal(peak, 1, "window creation must not race against other popup placements");
   assert.equal(new Set(created.map(x => new URL(x.url).hostname)).size, 4);
   assert.ok(created.every(x => x.type === "popup"));
+  assert.deepEqual(created.map(x => x.focused), [true, false, false, false],
+    "keep the first successfully opened popup focused during creation");
   assert.equal(messages.length, 5);
   assert.ok(messages.some(x => (x.message || x.value).action === "multiSourceControl"));
   assert.equal(alarms.length, 1);
@@ -120,12 +122,13 @@ test("reapplies the four exact screen quadrants after all windows are created", 
     alarms: { create: async () => {} },
   };
   assert.equal((await openMultiSearch(api)).opened, 4);
-  assert.equal(updated.length, 8);
+  assert.equal(updated.length, 9, "the final update must focus the first popup");
   assert.deepEqual(updated.slice(0, 4).map(({ width, height }) =>
     ({ width, height })), tileWindows(area, 4).map(({ width, height }) => ({ width, height })));
   assert.deepEqual(updated.slice(4, 8).map(({ left, top }) =>
     ({ left, top })), tileWindows(area, 4).map(({ left, top }) => ({ left, top })));
   assert.deepEqual(store.multiSearchSessions[0].windowIds, [101, 102, 103, 104]);
+  assert.deepEqual(updated.at(-1), { id: 101, focused: true });
 });
 test("retries positioning when the window manager reports shifted bounds", async () => {
   const tile = { left: 0, top: 0, width: 800, height: 480 };
