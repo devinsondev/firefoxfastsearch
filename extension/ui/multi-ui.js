@@ -12,10 +12,10 @@ const labels = {
     grantClose: "Разрешить кнопки «Закрыть все» на поисковиках",
     grantSuccess: "Доступ разрешён. Новые поисковые окна будут показывать крестик.",
     grantDenied: "Без доступа к поисковикам кнопка внутри их страниц может не появиться.",
-    run: "Искать выделенное", add: "Добавить сайт", remove: "Удалить", reset: "Вернуть 4 поисковика",
+    add: "Добавить сайт", remove: "Удалить", reset: "Вернуть 4 поисковика",
     auto: "Автозакрытие через (секунд, 0 — выключено)", closeAll: "Закрыть все окна мультипоиска",
     badSeconds: "Введите целое число от 0 до 86400.",
-    url: "HTTPS-адрес с {query}", empty: "Выбери текст на странице.", safe: "Только HTTPS и {query}. Окна распределяются по экрану; если места мало, часть не откроется.",
+    url: "HTTPS-адрес с {query}", safe: "Только HTTPS и {query}. Окна распределяются по экрану; если места мало, часть не откроется.",
     safeTabs: "Только HTTPS и {query}. Все выбранные поисковики откроются вкладками в одном отдельном окне Firefox." },
   en: { heading: "Multi-search", help: "F2 or the icon beside selected text. Every selected site receives the query.",
     displayMode: "How to open search engines", tiled: "Separate tiled windows",
@@ -25,15 +25,18 @@ const labels = {
     grantClose: "Enable Close all buttons on search engines",
     grantSuccess: "Site access granted. New search pages can show the close button.",
     grantDenied: "Without search-site access, the close button may not appear on those pages.",
-    run: "Search selection", add: "Add website", remove: "Remove", reset: "Restore 4 defaults",
+    add: "Add website", remove: "Remove", reset: "Restore 4 defaults",
     auto: "Auto-close after (seconds; 0 = off)", closeAll: "Close all multi-search windows",
     badSeconds: "Enter a whole number from 0 to 86400.",
-    url: "HTTPS URL with {query}", empty: "Select text on a webpage first.", safe: "HTTPS and {query} only. Windows tile across the screen; too-small screens open fewer windows.",
+    url: "HTTPS URL with {query}", safe: "HTTPS and {query} only. Windows tile across the screen; too-small screens open fewer windows.",
     safeTabs: "HTTPS and {query} only. Every selected provider opens as a tab in one separate Firefox window." },
 };
 const choices = ["google", "yandex", "bing", "duckduckgo", "custom"];
 const names = { google: "Google", yandex: "Yandex", bing: "Bing", duckduckgo: "DuckDuckGo", custom: "Custom URL / Свой URL" };
 export function initMultiUI(getLanguage, notify) {
+  // The popup is intentionally compact. Sensitive site permission requests
+  // are available only in Full Settings (real click, never requested on load).
+  const isFullSettings = document.getElementById("fullSettings") === null;
   const workspace = document.querySelector(".workspace");
   const section = document.createElement("section");
   section.className = "multi-settings";
@@ -133,12 +136,7 @@ export function initMultiUI(getLanguage, notify) {
     reset.addEventListener("click", () => {
       targets = DEFAULT_MULTI_TARGETS.map(x => ({ ...x })); store(); render();
     });
-    const run = document.createElement("button");
-    run.type = "button"; run.className = "multi-run"; run.textContent = t.run;
-    run.addEventListener("click", () => browser.runtime.sendMessage({ action: "multiSearchActive" })
-      .then(result => { if (!result?.opened) notify(t.empty, true); })
-      .catch(error => notify(String(error), true)));
-    controls.append(add, reset, run);
+    controls.append(add, reset);
     const warning = document.createElement("p");
     warning.textContent = displayMode === "tabs" ? t.safeTabs : t.safe;
     const closeAll = document.createElement("button");
@@ -155,23 +153,25 @@ export function initMultiUI(getLanguage, notify) {
     const closeCaption = document.createElement("span");
     closeCaption.textContent = t.toggleClose;
     closeToggle.append(closeCheckbox, closeCaption);
-    const grant = document.createElement("button");
-    grant.type = "button";
-    grant.textContent = t.grantClose;
-    grant.disabled = !showCloseButtons;
+    const grant = isFullSettings ? document.createElement("button") : null;
     closeCheckbox.addEventListener("change", () => {
       showCloseButtons = closeCheckbox.checked;
-      grant.disabled = !showCloseButtons;
+      if (grant) grant.disabled = !showCloseButtons;
       void browser.storage.local.set({ multiShowCloseButtons: showCloseButtons })
         .catch(error => notify(String(error), true));
     });
-    grant.addEventListener("click", () => {
-      // This request must happen directly in a real user gesture.
-      void browser.permissions.request({ origins: SEARCH_HOST_ORIGINS })
-        .then(allowed => notify(allowed ? t.grantSuccess : t.grantDenied, !allowed))
-        .catch(error => notify(String(error), true));
-    });
-    controls.append(grant);
+    if (grant) {
+      grant.type = "button";
+      grant.textContent = t.grantClose;
+      grant.disabled = !showCloseButtons;
+      grant.addEventListener("click", () => {
+        // Permission requests must originate from a real user gesture.
+        void browser.permissions.request({ origins: SEARCH_HOST_ORIGINS })
+          .then(allowed => notify(allowed ? t.grantSuccess : t.grantDenied, !allowed))
+          .catch(error => notify(String(error), true));
+      });
+      controls.append(grant);
+    }
     const autoLabel = document.createElement("label");
     autoLabel.className = "multi-auto";
     const autoText = document.createElement("span");

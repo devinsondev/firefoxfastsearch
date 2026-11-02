@@ -40,7 +40,6 @@ browser.runtime.onMessage.addListener((message, sender) => {
       selectedText: message.text, screenBounds: message.screenBounds,
       outerBounds: message.outerBounds });
   }
-  if (message?.action === "multiSearchActive") return openMultiSearch(browser);
   if (message?.action === "multiSessionInfo") {
     return multiSessionForWindow(browser, sender.tab?.windowId);
   }
